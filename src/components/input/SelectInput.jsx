@@ -46,7 +46,7 @@ const SelectInput = ({
           onBlur={handleBlur}
           onChange={handleChange}
           className={cn(
-            "w-full h-full bg-transparent px-3 pr-8 text-sm text-content-800 outline-none appearance-none cursor-pointer"
+            "w-full h-full bg-transparent px-3 text-sm text-content-800 outline-none appearance-none cursor-pointer"
           )}
           {...props}>
           {placeholder && (
