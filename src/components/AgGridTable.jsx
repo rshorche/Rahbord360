@@ -1,8 +1,11 @@
-import { useMemo } from "react";
+// src/components/AgGridTable.jsx
+import { useMemo, useState, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { ModuleRegistry } from "ag-grid-community";
 import { AllCommunityModule } from "ag-grid-community";
 import "ag-grid-community/styles/ag-theme-quartz.css";
+import { cn } from "../utils/cn";
+import CustomPagination from "./common/CustomPagination";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -11,7 +14,6 @@ const persianLocaleText = {
   deselectAll: "(لغو انتخاب همه)",
   loadingOoo: "در حال بارگذاری...",
   noRowsToShow: "داده‌ای برای نمایش وجود ندارد.",
-
   page: "صفحه",
   of: "از",
   to: "تا",
@@ -20,7 +22,6 @@ const persianLocaleText = {
   nextPage: "بعدی",
   previousPage: "قبلی",
   pageSizeSelectorLabel: "تعداد در صفحه:",
-
   filterOoo: "فیلتر...",
   applyFilter: "اعمال فیلتر",
   resetFilter: "بازنشانی فیلتر",
@@ -40,7 +41,7 @@ const persianLocaleText = {
   inRange: "در محدوده",
   inRangeStart: "از",
   inRangeEnd: "تا",
-  empty: "انتخاب کنید",
+  empty: "انتخاب کنید...",
   true: "درست",
   false: "غلط",
 };
@@ -49,32 +50,44 @@ const AgGridTable = ({
   rowData,
   columnDefs,
   pageSize = 10,
-  height = "65vh",
-  domLayout = "normal",
+  className,
   ...agGridProps
 }) => {
-  const defaultColDef = useMemo(() => {
-    return {
+  const [gridApi, setGridApi] = useState(null);
+
+  const defaultColDef = useMemo(
+    () => ({
       resizable: true,
       sortable: true,
       minWidth: 100,
-    };
+    }),
+    []
+  );
+
+  const onGridReady = useCallback((params) => {
+    setGridApi(params.api);
   }, []);
 
+  const pageSizeOptions = useMemo(() => [10, 25, 50, 100], []);
+
   return (
-    <div className="ag-theme-quartz" style={{ height: height, width: "100%" }}>
-      <AgGridReact
-        rowData={rowData}
-        columnDefs={columnDefs}
-        defaultColDef={defaultColDef}
-        pagination={true}
-        paginationPageSize={pageSize}
-        paginationPageSizeSelector={[10, 20, 50]}
-        domLayout={domLayout}
-        enableRtl={true}
-        localeText={persianLocaleText}
-        {...agGridProps}
-      />
+    <div className={cn("w-full h-full flex flex-col", className)}>
+      <div className="ag-theme-quartz w-full flex-grow">
+        <AgGridReact
+          rowData={rowData}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          pagination={true}
+          paginationPageSize={pageSize}
+          suppressPaginationPanel={true}
+          domLayout="normal"
+          onGridReady={onGridReady}
+          enableRtl={true}
+          localeText={persianLocaleText}
+          {...agGridProps}
+        />
+      </div>
+      <CustomPagination gridApi={gridApi} pageSizeOptions={pageSizeOptions} />
     </div>
   );
 };
