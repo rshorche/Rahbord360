@@ -1,6 +1,4 @@
-// src/features/transactions/components/TransactionActionsRenderer.jsx
-import React from "react";
-import Button from "../../../shared/components/ui/Button"; // مسیر صحیح کامپوننت Button
+import Button from "../../../shared/components/ui/Button";
 import { Edit, Trash2 } from "lucide-react";
 
 const TransactionActionsRenderer = ({ data, onEdit, onDelete }) => (
