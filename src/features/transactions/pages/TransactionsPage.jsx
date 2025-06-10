@@ -1,72 +1,70 @@
-import { useState, useMemo, useCallback } from "react";
-import useTransactionStore from "../store/useTransactionStore";
-import { PlusCircle, Wallet, ArrowUp, ArrowDown } from "lucide-react";
-import Swal from "sweetalert2";
-import { getTransactionColumnDefs } from "../utils/transactionTableConfig"; // مسیر رو چک کنید
-import Button from "../../../shared/components/ui/Button";
+// src/features/transactions/pages/TransactionsPage.jsx
+import { useMemo, useEffect } from "react";
+import { useTransactionsLogic } from "../hooks/useTransactionsLogic";
+
+// ایمپورت کامپوننت‌های عمومی
 import Card from "../../../shared/components/ui/Card";
-import AgGridTable from "../../../shared/components/ui/AgGridTable";
+import Button from "../../../shared/components/ui/Button";
 import Modal from "../../../shared/components/ui/Modal";
+import AgGridTable from "../../../shared/components/ui/AgGridTable";
+
+// ایمپورت کامپوننت‌های خاص فیچر تراکنش
 import TransactionForm from "../components/TransactionForm";
+import TransactionActionsRenderer from "../components/TransactionActionsRenderer";
+
+// ایمپورت getTransactionColumnDefs
+import { getTransactionColumnDefs } from "../utils/transactionTableConfig.jsx";
+
+import { DateObject } from "react-multi-date-picker";
+
+// ایمپورت آیکون‌ها
+import { PlusCircle, Wallet, ArrowUp, ArrowDown } from "lucide-react";
 
 export default function TransactionsPage() {
-  const { transactions, deleteTransaction, getTotals } = useTransactionStore();
+  const {
+    transactions,
+    totalDeposit,
+    totalWithdraw,
+    netValue,
+    isModalOpen,
+    editingTransaction,
+    handleOpenModal,
+    handleCloseModal,
+    handleDelete,
+    handleSaveTransaction,
+    fetchTransactions,
+  } = useTransactionsLogic();
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState(null);
-
-  const { totalDeposit, totalWithdraw, netValue } = useMemo(
-    () => getTotals(),
-    [getTotals]
-  );
-
-  const handleOpenModal = useCallback((transaction = null) => {
-    setEditingTransaction(transaction);
-    setIsModalOpen(true);
-  }, []);
-
-  const handleCloseModal = useCallback(() => {
-    setIsModalOpen(false);
-    setEditingTransaction(null);
-  }, []);
-
-  const handleDelete = useCallback(
-    async (id) => {
-      const result = await Swal.fire({
-        title: "آیا مطمئن هستید؟",
-        text: "این تراکنش برای همیشه حذف خواهد شد!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#d33",
-        cancelButtonColor: "#6b7280",
-        confirmButtonText: "بله، حذف کن!",
-        cancelButtonText: "لغو",
-      });
-      if (result.isConfirmed) {
-        deleteTransaction(id);
-        Swal.fire({
-          title: "حذف شد!",
-          text: "تراکنش با موفقیت حذف شد.",
-          icon: "success",
-          timer: 1500,
-          showConfirmButton: false,
-          toast: true,
-          position: "top-end",
-        });
-      }
-    },
-    [deleteTransaction]
-  );
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const columnDefs = useMemo(
     () => getTransactionColumnDefs(handleOpenModal, handleDelete),
     [handleOpenModal, handleDelete]
   );
 
+  const handleSubmitFormSuccess = async (formData, isEditMode) => {
+    const processedData = {
+      ...formData,
+      amount: parseFloat(formData.amount),
+      date:
+        formData.date instanceof DateObject
+          ? formData.date.format("YYYY/MM/DD")
+          : formData.date,
+    };
+    const success = await handleSaveTransaction(processedData, isEditMode);
+    if (success) {
+      handleCloseModal();
+    }
+  };
+
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-screen-xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-content-800">
+    <div className="flex flex-col gap-4 md:gap-6 lg:gap-8">
+
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between items-center">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-content-800">
+    
           تراکنش‌های واریز و برداشت
         </h1>
         <Button
@@ -76,8 +74,7 @@ export default function TransactionsPage() {
           ثبت تراکنش جدید
         </Button>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
         <Card
           title="مجموع واریزها"
           amount={totalDeposit}
@@ -97,19 +94,17 @@ export default function TransactionsPage() {
           icon={<Wallet size={28} className="text-primary-600" />}
         />
       </div>
-
       <div className="bg-white rounded-xl shadow-lg w-full overflow-hidden">
-        <div style={{ height: "65vh" }}>
-          <AgGridTable rowData={transactions} columnDefs={columnDefs} />
-        </div>
+        <AgGridTable rowData={transactions} columnDefs={columnDefs} />
       </div>
-
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title={editingTransaction ? "ویرایش تراکنش" : "ثبت تراکنش جدید"}>
         <TransactionForm
-          onSubmitSuccess={handleCloseModal}
+          onSubmitSuccess={(formData) =>
+            handleSubmitFormSuccess(formData, !!editingTransaction)
+          }
           initialData={editingTransaction}
           isEditMode={!!editingTransaction}
         />

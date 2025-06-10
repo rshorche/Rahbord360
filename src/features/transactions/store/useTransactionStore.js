@@ -1,74 +1,99 @@
-// src/store/transactions/transactions.js
-
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { supabase } from "../../../shared/services/supabase";
 
-const useTransactionStore = create(
-  persist(
-    (set, get) => ({
-      // 'get' را برای دسترسی به حالت فعلی (transactions) اضافه کنید
-      transactions: [],
+const useTransactionStore = create((set) => ({
+  transactions: [], 
 
-      addTransaction: (newTransaction) => {
-        const transactionWithId = {
-          ...newTransaction,
-          id: crypto.randomUUID(),
-        };
+  fetchTransactions: async () => {
+    try {
+      const { data, error } = await supabase
+        .from("transactions") 
+        .select("*") 
+        .order("date", { ascending: false });
 
-        set((state) => ({
-          transactions: [...state.transactions, transactionWithId], // منطق مرتب‌سازی (sort) از اینجا حذف شد
-        }));
-      },
+      if (error) throw error;
 
-      updateTransaction: (id, updatedData) => {
-        set((state) => ({
-          transactions: state.transactions.map((transaction) =>
-            transaction.id === id
-              ? { ...transaction, ...updatedData, id: transaction.id }
-              : transaction
-          ),
-          // منطق مرتب‌سازی (sort) از اینجا حذف شد
-        }));
-      },
-
-      deleteTransaction: (id) => {
-        set((state) => ({
-          transactions: state.transactions.filter(
-            (transaction) => transaction.id !== id
-          ),
-        }));
-      },
-
-      // تابع جدید برای دریافت تراکنش‌های مرتب‌شده و محاسبه مجموع‌ها (getTotals)
-      getTotals: () => {
-        let deposit = 0;
-        let withdraw = 0;
-        get().transactions.forEach((t) => {
-          // از get() برای دسترسی به transactions استفاده کنید
-          if (t.type === "deposit") {
-            deposit += t.amount;
-          } else {
-            withdraw += t.amount;
-          }
-        });
-        return {
-          totalDeposit: deposit,
-          totalWithdraw: withdraw,
-          netValue: deposit - withdraw,
-        };
-      },
-
-      getSortedTransactions: () => {
-        return [...get().transactions].sort(
-          (a, b) => new Date(b.date) - new Date(a.date)
-        );
-      },
-    }),
-    {
-      name: "rahbord360-transactions-storage",
-      storage: createJSONStorage(() => localStorage),
+      set({ transactions: data });
+    } catch (error) {
+      console.error("Error fetching transactions:", error.message);
     }
-  )
-);
+  },
+
+  addTransaction: async (newTransaction) => {
+    try {
+      const { data, error } = await supabase
+        .from("transactions")
+        .insert(newTransaction)
+        .select(); 
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        set((state) => ({
+          transactions: [data[0], ...state.transactions].sort((a, b) => {
+            const dateA = new Date(a.date.replace(/\//g, "-"));
+            const dateB = new Date(b.date.replace(/\//g, "-"));
+            return dateB.getTime() - dateA.getTime();
+          }),
+        }));
+      }
+      return true; 
+    } catch (error) {
+      console.error("Error adding transaction:", error.message);
+      return false; 
+    }
+  },
+
+  updateTransaction: async (id, updatedData) => {
+    try {
+      const { data, error } = await supabase
+        .from("transactions")
+        .update(updatedData)
+        .eq("id", id) 
+        .select();
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        set((state) => ({
+          transactions: state.transactions
+            .map((transaction) =>
+              transaction.id === id
+                ? data[0] 
+                : transaction
+            )
+            .sort((a, b) => {
+              const dateA = new Date(a.date.replace(/\//g, "-"));
+              const dateB = new Date(b.date.replace(/\//g, "-"));
+              return dateB.getTime() - dateA.getTime();
+            }),
+        }));
+      }
+      return true;
+    } catch (error) {
+      console.error("Error updating transaction:", error.message);
+      return false;
+    }
+  },
+
+  deleteTransaction: async (id) => {
+    try {
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", id); 
+
+      if (error) throw error;
+
+      set((state) => ({
+        transactions: state.transactions.filter(
+          (transaction) => transaction.id !== id
+        ),
+      }));
+      return true;
+    } catch (error) {
+      console.error("Error deleting transaction:", error.message);
+      return false;
+    }
+  },
+}));
 
 export default useTransactionStore;

@@ -1,11 +1,10 @@
-// src/components/AgGridTable.jsx
 import { useMemo, useState, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { ModuleRegistry } from "ag-grid-community";
 import { AllCommunityModule } from "ag-grid-community";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { cn } from "../../utils/cn";
-import CustomPagination from "../../../shared/components/ui/CustomPagination";
+import CustomPagination from "./CustomPagination";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -80,7 +79,7 @@ const AgGridTable = ({
           pagination={true}
           paginationPageSize={pageSize}
           suppressPaginationPanel={true}
-          domLayout="normal"
+          domLayout="autoHeight"
           onGridReady={onGridReady}
           enableRtl={true}
           localeText={persianLocaleText}

@@ -1,15 +1,7 @@
+import TransactionActionsRenderer from "../components/TransactionActionsRenderer"; // مسیر صحیح کامپوننت ActionsRenderer
+import { formatCurrency } from "../../../shared/utils/formatters"; // مسیر صحیح تابع فرمت‌دهی
 
-import TransactionActionsRenderer from "../components/TransactionActionsRenderer"; // مسیر جدید و صحیح
-
-import { formatCurrency } from "../../../shared/utils/formatters"; // فرض می‌کنیم formatters.js هم در utils/transactions هست
-
-/**
- * پیکربندی ستون‌ها برای جدول تراکنش‌ها (Ag-Grid).
- * @param {function} onEdit - تابع callback برای ویرایش تراکنش.
- * @param {function} onDelete - تابع callback برای حذف تراکنش.
- * @returns {Array} - آرایه‌ای از تعریف ستون‌ها.
- */
-export const getTransactionColumnDefs = (onEdit, onDelete) => [
+export const getTransactionColumnDefs = (handleOpenModal, handleDelete) => [
   { headerName: "تاریخ", field: "date", width: 130, sort: "desc" },
   {
     headerName: "نوع",
@@ -44,7 +36,7 @@ export const getTransactionColumnDefs = (onEdit, onDelete) => [
     headerName: "عملیات",
     width: 100,
     cellRenderer: TransactionActionsRenderer,
-    cellRendererParams: { onEdit: onEdit, onDelete: onDelete },
+    cellRendererParams: { onEdit: handleOpenModal, onDelete: handleDelete }, // پاس دادن توابع به Cell Renderer
     sortable: false,
     resizable: false,
   },
