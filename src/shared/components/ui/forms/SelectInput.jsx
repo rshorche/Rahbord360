@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { ChevronDown } from "lucide-react";
 import FormFieldWrapper from "./FormFieldWrapper";
-import { cn } from "../../utils/cn";
+import { cn } from "../../../../shared/utils/cn";
 
 const SelectInput = ({
   label,

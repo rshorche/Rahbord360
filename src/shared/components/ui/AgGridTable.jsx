@@ -4,8 +4,8 @@ import { AgGridReact } from "ag-grid-react";
 import { ModuleRegistry } from "ag-grid-community";
 import { AllCommunityModule } from "ag-grid-community";
 import "ag-grid-community/styles/ag-theme-quartz.css";
-import { cn } from "../utils/cn";
-import CustomPagination from "./common/CustomPagination";
+import { cn } from "../../utils/cn";
+import CustomPagination from "../../../shared/components/ui/CustomPagination";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 

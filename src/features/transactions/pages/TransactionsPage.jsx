@@ -1,65 +1,24 @@
 import { useState, useMemo, useCallback } from "react";
-import useTransactionStore from "../store/transactions/transactions";
-import AgGridTable from "../components/AgGridTable";
-import TransactionForm from "../components/transactions/TransactionForm";
-import Card from "../components/common/Card";
-import Modal from "../components/common/Modal";
-import Button from "../components/common/Button";
-import {
-  PlusCircle,
-  Edit,
-  Trash2,
-  Wallet,
-  ArrowUp,
-  ArrowDown,
-} from "lucide-react";
+import useTransactionStore from "../store/useTransactionStore";
+import { PlusCircle, Wallet, ArrowUp, ArrowDown } from "lucide-react";
 import Swal from "sweetalert2";
+import { getTransactionColumnDefs } from "../utils/transactionTableConfig"; // مسیر رو چک کنید
+import Button from "../../../shared/components/ui/Button";
+import Card from "../../../shared/components/ui/Card";
+import AgGridTable from "../../../shared/components/ui/AgGridTable";
+import Modal from "../../../shared/components/ui/Modal";
+import TransactionForm from "../components/TransactionForm";
 
-const formatCurrency = (value) => Number(value).toLocaleString("fa-IR");
-
-const ActionsRenderer = ({ data, onEdit, onDelete }) => (
-  <div className="flex items-center justify-center h-full space-x-1 rtl:space-x-reverse">
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => onEdit(data)}
-      title="ویرایش"
-      className="h-8 w-8 shadow-none text-blue-600 hover:bg-blue-100">
-      <Edit size={16} />
-    </Button>
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => onDelete(data.id)}
-      title="حذف"
-      className="h-8 w-8 shadow-none text-danger-600 hover:bg-danger-100">
-      <Trash2 size={16} />
-    </Button>
-  </div>
-);
-
-export default function Transactions() {
-  const { transactions, deleteTransaction } = useTransactionStore();
+export default function TransactionsPage() {
+  const { transactions, deleteTransaction, getTotals } = useTransactionStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
 
-  const { totalDeposit, totalWithdraw, netValue } = useMemo(() => {
-    let deposit = 0;
-    let withdraw = 0;
-    transactions.forEach((t) => {
-      if (t.type === "deposit") {
-        deposit += t.amount;
-      } else {
-        withdraw += t.amount;
-      }
-    });
-    return {
-      totalDeposit: deposit,
-      totalWithdraw: withdraw,
-      netValue: deposit - withdraw,
-    };
-  }, [transactions]);
+  const { totalDeposit, totalWithdraw, netValue } = useMemo(
+    () => getTotals(),
+    [getTotals]
+  );
 
   const handleOpenModal = useCallback((transaction = null) => {
     setEditingTransaction(transaction);
@@ -100,47 +59,8 @@ export default function Transactions() {
   );
 
   const columnDefs = useMemo(
-    () => [
-      { headerName: "تاریخ", field: "date", width: 130, sort: "desc" },
-      {
-        headerName: "نوع",
-        field: "type",
-        width: 110,
-        cellRenderer: (p) => (
-          <span
-            className={`px-2 py-1 text-xs rounded-full font-medium ${
-              p.value === "deposit"
-                ? "bg-success-light text-success-800"
-                : "bg-danger-light text-danger-800"
-            }`}>
-            {p.value === "deposit" ? "واریز" : "برداشت"}
-          </span>
-        ),
-      },
-      {
-        headerName: "مبلغ (تومان)",
-        field: "amount",
-        width: 160,
-        valueFormatter: (p) => formatCurrency(p.value),
-        cellClass: "font-semibold",
-      },
-      { headerName: "کارگزاری", field: "broker", width: 150 },
-      {
-        headerName: "توضیحات",
-        field: "description",
-        flex: 1,
-        tooltipField: "description",
-      },
-      {
-        headerName: "عملیات",
-        width: 100,
-        cellRenderer: ActionsRenderer,
-        cellRendererParams: { onEdit: handleOpenModal, onDelete: handleDelete },
-        sortable: false,
-        resizable: false,
-      },
-    ],
-    [handleDelete, handleOpenModal]
+    () => getTransactionColumnDefs(handleOpenModal, handleDelete),
+    [handleOpenModal, handleDelete]
   );
 
   return (

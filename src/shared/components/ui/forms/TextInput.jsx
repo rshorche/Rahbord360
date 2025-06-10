@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { Eye, EyeOff } from "lucide-react";
+import Button from "../Button";
 import FormFieldWrapper from "./FormFieldWrapper";
-import Button from "../common/Button";
-import { cn } from "../../utils/cn";
+import { cn } from "../../../../shared/utils/cn";
 
 const TextInput = ({
   label,

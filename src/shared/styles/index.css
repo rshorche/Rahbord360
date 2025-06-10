@@ -150,3 +150,10 @@
 .animate-scale-in {
   animation: scale-in 0.2s ease-out;
 }
+
+.ag-theme-quartz .ag-cell-focus,
+.ag-theme-quartz .ag-cell-focus:focus,
+.ag-theme-quartz .ag-cell-focus:focus-within {
+  border: none !important;
+  outline: none !important;
+}

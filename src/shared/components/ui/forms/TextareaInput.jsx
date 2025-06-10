@@ -1,6 +1,6 @@
 import { useFormContext } from "react-hook-form";
 import FormFieldWrapper from "./FormFieldWrapper";
-import { cn } from "../../utils/cn";
+import { cn } from "../../../../shared/utils/cn";
 
 const TextareaInput = ({
   label,
