@@ -5,6 +5,7 @@ import HomePage from "../features/home/pages/HomePage";
 import NotFoundPage from "../shared/pages/NotFoundPage";
 import TransactionsPage from "../features/transactions/pages/TransactionsPage";
 import DashboardOverviewPage from "../features/dashboard/pages/DashboardOverviewPage";
+import PortfolioPage from "../features/portfolio/pages/PortfolioPage";
 
 const router = createBrowserRouter([
   {
@@ -20,7 +21,9 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardOverviewPage /> },
       { path: "transactions", element: <TransactionsPage /> },
+      { path: "portfolio", element: <PortfolioPage /> },
 
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ]);
