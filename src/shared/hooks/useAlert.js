@@ -1,4 +1,3 @@
-// shared/hooks/useAlert.js
 import Swal from "sweetalert2";
 
 export const useAlert = () => {

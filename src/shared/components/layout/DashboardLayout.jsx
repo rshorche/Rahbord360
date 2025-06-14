@@ -1,14 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Menu, Home, BarChart2 } from "lucide-react";
+import { Menu, Home, BarChart2, Briefcase } from "lucide-react";
 import { cn } from "../../utils/cn";
 import Sidebar from "../Sidebar";
+import useAllSymbolsStore from "../../store/useAllSymbolsStore"; 
+import usePriceHistoryStore from "../../store/usePriceHistoryStore"; 
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [isCollapsed, setIsCollapsed] = useState(false);
-
   const location = useLocation();
+
+  const { fetchAllSymbolsForSearch } = useAllSymbolsStore();
+  const { fetchAllSymbolsFromDB } = usePriceHistoryStore();
 
   const openSidebar = useCallback(() => {
     setIsSidebarOpen(true);
@@ -33,19 +37,29 @@ export default function DashboardLayout() {
         setIsCollapsed(false);
       }
     };
-
     handleResize();
-
     window.addEventListener("resize", handleResize);
-
     if (window.innerWidth < 1024) {
       setTimeout(() => closeSidebar(), 50);
     }
-
     return () => {
       window.removeEventListener("resize", handleResize);
     };
   }, [location.pathname, closeSidebar]);
+
+  useEffect(() => {
+    fetchAllSymbolsForSearch(); 
+
+    fetchAllSymbolsFromDB();
+    const refreshInterval = setInterval(() => {
+      console.log(
+        "Fetching latest prices from DB (client-side refresh in DashboardLayout)..."
+      );
+      fetchAllSymbolsFromDB();
+    }, 30 * 1000);
+
+    return () => clearInterval(refreshInterval); 
+  }, [fetchAllSymbolsForSearch, fetchAllSymbolsFromDB]);
 
   const navigationLinks = [
     {
@@ -58,6 +72,12 @@ export default function DashboardLayout() {
       to: "/dashboard/transactions",
       label: "تراکنش‌ها",
       icon: <BarChart2 size={24} />,
+      end: true,
+    },
+    {
+      to: "/dashboard/portfolio",
+      label: "پورتفولیو",
+      icon: <Briefcase size={24} />,
       end: true,
     },
   ];
@@ -76,7 +96,6 @@ export default function DashboardLayout() {
         isCollapsed={isCollapsed}
         toggleCollapsed={toggleCollapsed}
       />
-
       <main
         className={cn(
           "flex-1 transition-all duration-300 ease-in-out",
@@ -85,7 +104,6 @@ export default function DashboardLayout() {
         )}>
         <Outlet />
       </main>
-
       {!isSidebarOpen && window.innerWidth < 1024 && (
         <button
           onClick={openSidebar}
@@ -98,7 +116,6 @@ export default function DashboardLayout() {
           <Menu size={24} />
         </button>
       )}
-
       {isSidebarOpen && window.innerWidth < 1024 && (
         <div
           onClick={closeSidebar}
