@@ -1,23 +1,18 @@
-// src/features/transactions/pages/TransactionsPage.jsx
 import { useMemo, useEffect } from "react";
 import { useTransactionsLogic } from "../hooks/useTransactionsLogic";
 
-// ایمپورت کامپوننت‌های عمومی
 import Card from "../../../shared/components/ui/Card";
 import Button from "../../../shared/components/ui/Button";
 import Modal from "../../../shared/components/ui/Modal";
 import AgGridTable from "../../../shared/components/ui/AgGridTable";
 
-// ایمپورت کامپوننت‌های خاص فیچر تراکنش
-import TransactionForm from "../components/TransactionForm";
-import TransactionActionsRenderer from "../components/TransactionActionsRenderer";
 
-// ایمپورت getTransactionColumnDefs
+import TransactionForm from "../components/TransactionForm";
+
 import { getTransactionColumnDefs } from "../utils/transactionTableConfig.jsx";
 
 import { DateObject } from "react-multi-date-picker";
 
-// ایمپورت آیکون‌ها
 import { PlusCircle, Wallet, ArrowUp, ArrowDown } from "lucide-react";
 
 export default function TransactionsPage() {
