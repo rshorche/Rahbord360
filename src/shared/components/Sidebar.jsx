@@ -1,8 +1,9 @@
 import React from "react";
 import { NavLink, Link } from "react-router-dom";
-import { X, ChevronRight, ChevronLeft } from "lucide-react";
-import { cn } from "../../shared/utils/cn";
+import { X, ChevronRight, ChevronLeft, LogOut } from "lucide-react"; // LogOut اینجا اضافه شده
+import { cn } from "../utils/cn";
 import logoIcon from "../../../public/images/logo.webp";
+import useAuthStore from "../../features/auth/store/useAuthStore"; // این خط import اصلی است که باید اضافه شود
 
 export default function Sidebar({
   isOpen,
@@ -13,6 +14,8 @@ export default function Sidebar({
   toggleCollapsed,
   onTransitionEnd,
 }) {
+  const { logOut } = useAuthStore(); // این خط از قبل باید اضافه شده باشد
+
   const handleAsideTransitionEnd = (e) => {
     if (e.propertyName === "transform" && !isOpen && onTransitionEnd) {
       onTransitionEnd();
@@ -29,12 +32,14 @@ export default function Sidebar({
         "w-64 max-w-full sm:max-w-64 min-w-16",
         isCollapsed ? "lg:w-20" : "lg:w-64"
       )}
-      onTransitionEnd={handleAsideTransitionEnd}>
+      onTransitionEnd={handleAsideTransitionEnd}
+    >
       <div className="flex items-center justify-between px-4 h-16 border-b border-gray-200 relative">
         {!isCollapsed ? (
           <Link
             to="/"
-            className="flex items-center text-xl font-bold text-gray-800 whitespace-nowrap h-full">
+            className="flex items-center text-xl font-bold text-gray-800 whitespace-nowrap h-full"
+          >
             {brandName}
           </Link>
         ) : (
@@ -46,11 +51,11 @@ export default function Sidebar({
             />
           </Link>
         )}
-
         <button
           onClick={closeSidebar}
           className="lg:hidden p-2 rounded-full text-gray-500 hover:bg-gray-100 absolute left-4 top-1/2 -translate-y-1/2"
-          aria-label="بستن سایدبار">
+          aria-label="بستن سایدبار"
+        >
           <X size={24} />
         </button>
       </div>
@@ -73,7 +78,8 @@ export default function Sidebar({
                       ? "flex-col justify-center items-center gap-y-1"
                       : ""
                   )
-                }>
+                }
+              >
                 {link.icon && (
                   <span className={cn(isCollapsed ? "" : "ml-3")}>
                     {React.cloneElement(link.icon, {
@@ -81,7 +87,6 @@ export default function Sidebar({
                     })}
                   </span>
                 )}
-
                 <span
                   className={cn(
                     "font-medium whitespace-nowrap",
@@ -89,7 +94,8 @@ export default function Sidebar({
                     "transition-opacity duration-200 ease-in-out",
                     isCollapsed && "sr-only",
                     isCollapsed && "hidden"
-                  )}>
+                  )}
+                >
                   {link.label}
                 </span>
               </NavLink>
@@ -98,11 +104,33 @@ export default function Sidebar({
         </ul>
       </nav>
 
+      {/* بخش خروج */}
+      <div className="p-4 mt-auto">
+        <button
+          onClick={logOut}
+          className="flex items-center p-3 rounded-lg text-content-600 hover:bg-danger-100 hover:text-danger-700 w-full"
+        >
+          <LogOut size={24} className={cn(isCollapsed ? "" : "ml-3")} />
+          <span
+             className={cn(
+              "font-medium whitespace-nowrap",
+              isCollapsed ? "opacity-0 delay-0" : "opacity-100 delay-150",
+              "transition-opacity duration-200 ease-in-out",
+              isCollapsed && "sr-only",
+              isCollapsed && "hidden"
+            )}
+          >
+            خروج
+          </span>
+        </button>
+      </div>
+
       <div className="p-4 border-t border-gray-200 hidden lg:flex justify-end">
         <button
           onClick={toggleCollapsed}
           className="p-2 rounded-full text-white bg-primary-500 hover:bg-primary-600 focus:outline-none"
-          aria-label={isCollapsed ? "باز کردن سایدبار" : "جمع کردن سایدبار"}>
+          aria-label={isCollapsed ? "باز کردن سایدبار" : "جمع کردن سایدبار"}
+        >
           {isCollapsed ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
         </button>
       </div>
