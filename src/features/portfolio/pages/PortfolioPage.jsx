@@ -22,20 +22,21 @@ import Card from "../../../shared/components/ui/Card";
 import { showConfirmAlert } from "../../../shared/utils/notifications";
 
 export default function PortfolioPage() {
-  const { actions, fetchActions } = useStockTradesStore();
+  const { actions, fetchActions, isLoading } = useStockTradesStore();
   const { priceHistory } = usePriceHistoryStore();
 
   const [activeTab, setActiveTab] = useState("open");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  // خط زیر را اصلاح می‌کنیم:
-  const [isEditActionModalOpen, setIsEditActionModalOpen] = useState(false); // نام اصلی را برگرداندیم
+  const [isEditActionModalOpen, setIsEditActionModalOpen] = useState(false);
   const [editingAction, setEditingAction] = useState(null);
   const [detailData, setDetailData] = useState({ symbol: "", trades: [] });
 
   useEffect(() => {
-    fetchActions();
-  }, [fetchActions]);
+    if (actions.length === 0) {
+        fetchActions();
+    }
+  }, [fetchActions, actions.length]);
 
   const { openPositions, closedPositions } = useMemo(() => {
     const latestPricesForCalculator = Array.from(priceHistory.entries()).map(
@@ -49,7 +50,7 @@ export default function PortfolioPage() {
 
   const handleOpenAddModal = useCallback(() => {
     setEditingAction(null);
-    setIsEditActionModalOpen(false); // اینجا هم از نام اصلی استفاده می‌کنیم
+    setIsEditActionModalOpen(false);
     setIsAddModalOpen(true);
   }, []);
 
@@ -70,11 +71,11 @@ export default function PortfolioPage() {
 
   const handleEditAction = useCallback((action) => {
     setEditingAction(action);
-    setIsEditActionModalOpen(true); // اینجا هم از نام اصلی استفاده می‌کنیم
+    setIsEditActionModalOpen(true);
   }, []);
 
   const handleCloseEditActionModal = useCallback(() => {
-    setIsEditActionModalOpen(false); // اینجا هم از نام اصلی استفاده می‌کنیم
+    setIsEditActionModalOpen(false);
     setEditingAction(null);
     fetchActions();
     handleCloseDetailModal();
@@ -142,41 +143,42 @@ export default function PortfolioPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-screen-2xl mx-auto">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-        <Card
-          color="primary"
-          title="ارزش لحظه‌ای پورتفوی"
-          amount={portfolioMetrics.totalCurrentValue}
-          icon={<Wallet size={24} className="text-primary-600" />}
-        />
-        <Card
-          color={portfolioMetrics.totalUnrealizedPL >= 0 ? "success" : "danger"}
-          title="سود/زیان محقق نشده"
-          amount={portfolioMetrics.totalUnrealizedPL}
-          icon={
-            portfolioMetrics.totalUnrealizedPL >= 0 ? (
-              <TrendingUp size={24} className="text-success-600" />
-            ) : (
-              <TrendingDown size={24} className="text-danger-600" />
-            )
-          }
-        />
-        <Card
-          color={
-            portfolioMetrics.totalRealizedReturn >= 0 ? "success" : "danger"
-          }
-          title="بازده محقق شده (فروش + مجمع + حق تقدم)"
-          amount={portfolioMetrics.totalRealizedReturn}
-          icon={
-            <DollarSign
-              size={24}
-              className={
-                portfolioMetrics.totalRealizedReturn >= 0
-                  ? "text-success-600"
-                  : "text-danger-600"
-              }
-            />
-          }
-        />
+         {/* Card components */}
+         <Card
+            color="primary"
+            title="ارزش لحظه‌ای پورتفوی"
+            amount={portfolioMetrics.totalCurrentValue}
+            icon={<Wallet size={24} className="text-primary-600" />}
+          />
+          <Card
+            color={portfolioMetrics.totalUnrealizedPL >= 0 ? "success" : "danger"}
+            title="سود/زیان محقق نشده"
+            amount={portfolioMetrics.totalUnrealizedPL}
+            icon={
+              portfolioMetrics.totalUnrealizedPL >= 0 ? (
+                <TrendingUp size={24} className="text-success-600" />
+              ) : (
+                <TrendingDown size={24} className="text-danger-600" />
+              )
+            }
+          />
+          <Card
+            color={
+              portfolioMetrics.totalRealizedReturn >= 0 ? "success" : "danger"
+            }
+            title="بازده محقق شده (فروش + مجمع + حق تقدم)"
+            amount={portfolioMetrics.totalRealizedReturn}
+            icon={
+              <DollarSign
+                size={24}
+                className={
+                  portfolioMetrics.totalRealizedReturn >= 0
+                    ? "text-success-600"
+                    : "text-danger-600"
+                }
+              />
+            }
+          />
       </div>
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-content-800">
@@ -217,11 +219,13 @@ export default function PortfolioPage() {
           rowData={activeTab === "open" ? openPositions : closedPositions}
           columnDefs={masterColumnDefs}
           domLayout="autoHeight"
+          isLoading={isLoading}
         />
       </div>
       <Modal
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}
+         isLoading={isLoading} 
         title="ثبت رویداد جدید پورتفوی">
         <AddActionModal
           onSubmitSuccess={handleCloseAddModal}
@@ -242,28 +246,11 @@ export default function PortfolioPage() {
           />
         </div>
       </Modal>
-      {/* مودال ویرایش رویداد خاص */}
       <Modal
-        isOpen={isEditActionModalOpen} // اینجا هم از نام اصلی استفاده می‌کنیم
+        isOpen={isEditActionModalOpen}
         onClose={handleCloseEditActionModal}
         title={`ویرایش رویداد: ${editingAction?.symbol} (${
-          editingAction?.type === "buy"
-            ? "خرید"
-            : editingAction?.type === "sell"
-            ? "فروش"
-            : editingAction?.type === "dividend"
-            ? "سود نقدی"
-            : editingAction?.type === "bonus"
-            ? "سهام جایزه"
-            : editingAction?.type === "rights_exercise"
-            ? "استفاده از حق"
-            : editingAction?.type === "rights_sell"
-            ? "فروش حق"
-            : editingAction?.type === "revaluation"
-            ? "تجدید ارزیابی"
-            : editingAction?.type === "premium"
-            ? "صرف سهام"
-            : editingAction?.type
+          editingAction?.type === "buy" ? "خرید" : editingAction?.type
         })`}>
         <AddActionModal
           onSubmitSuccess={handleCloseEditActionModal}

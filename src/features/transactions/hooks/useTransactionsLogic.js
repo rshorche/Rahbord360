@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
-import useTransactionStore from "../store/useTransactionStore"; 
+import useTransactionStore from "../store/useTransactionStore";
 import {
   showSuccessToast,
   showErrorAlert,
   showConfirmAlert,
-} from "../../../shared/utils/notifications"; 
+} from "../../../shared/utils/notifications";
 
 export const useTransactionsLogic = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,6 +16,7 @@ export const useTransactionsLogic = () => {
     updateTransaction,
     deleteTransaction,
     fetchTransactions,
+    isLoading, // دریافت isLoading از استور
   } = useTransactionStore();
 
   const { totalDeposit, totalWithdraw, netValue } = useMemo(() => {
@@ -63,10 +64,10 @@ export const useTransactionsLogic = () => {
     async (formData, isEdit) => {
       try {
         if (isEdit) {
-          updateTransaction(formData.id, formData);
+          await updateTransaction(formData.id, formData);
           showSuccessToast("تراکنش با موفقیت ویرایش شد.");
         } else {
-          addTransaction(formData);
+          await addTransaction(formData);
           showSuccessToast("تراکنش جدید ثبت شد.");
         }
         return true;
@@ -90,6 +91,7 @@ export const useTransactionsLogic = () => {
     handleCloseModal,
     handleDelete,
     handleSaveTransaction,
-    fetchTransactions, 
+    fetchTransactions,
+    isLoading, // پاس دادن isLoading به خروجی
   };
 };

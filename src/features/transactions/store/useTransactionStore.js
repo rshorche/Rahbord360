@@ -2,20 +2,23 @@ import { create } from "zustand";
 import { supabase } from "../../../shared/services/supabase";
 
 const useTransactionStore = create((set) => ({
-  transactions: [], 
+  transactions: [],
+  isLoading: true, // مقدار اولیه برای بارگذاری در اولین ورود به صفحه
 
   fetchTransactions: async () => {
+    set({ isLoading: true });
     try {
       const { data, error } = await supabase
-        .from("transactions") 
-        .select("*") 
+        .from("transactions")
+        .select("*")
         .order("date", { ascending: false });
 
       if (error) throw error;
-
-      set({ transactions: data });
+      set({ transactions: data || [] });
     } catch (error) {
       console.error("Error fetching transactions:", error.message);
+    } finally {
+      set({ isLoading: false });
     }
   },
 
@@ -24,7 +27,7 @@ const useTransactionStore = create((set) => ({
       const { data, error } = await supabase
         .from("transactions")
         .insert(newTransaction)
-        .select(); 
+        .select();
 
       if (error) throw error;
       if (data && data.length > 0) {
@@ -36,10 +39,10 @@ const useTransactionStore = create((set) => ({
           }),
         }));
       }
-      return true; 
+      return true;
     } catch (error) {
       console.error("Error adding transaction:", error.message);
-      return false; 
+      return false;
     }
   },
 
@@ -48,7 +51,7 @@ const useTransactionStore = create((set) => ({
       const { data, error } = await supabase
         .from("transactions")
         .update(updatedData)
-        .eq("id", id) 
+        .eq("id", id)
         .select();
 
       if (error) throw error;
@@ -57,7 +60,7 @@ const useTransactionStore = create((set) => ({
           transactions: state.transactions
             .map((transaction) =>
               transaction.id === id
-                ? data[0] 
+                ? data[0]
                 : transaction
             )
             .sort((a, b) => {
@@ -79,7 +82,7 @@ const useTransactionStore = create((set) => ({
       const { error } = await supabase
         .from("transactions")
         .delete()
-        .eq("id", id); 
+        .eq("id", id);
 
       if (error) throw error;
 

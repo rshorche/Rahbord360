@@ -1,18 +1,12 @@
 import { useMemo, useEffect } from "react";
 import { useTransactionsLogic } from "../hooks/useTransactionsLogic";
-
 import Card from "../../../shared/components/ui/Card";
 import Button from "../../../shared/components/ui/Button";
 import Modal from "../../../shared/components/ui/Modal";
 import AgGridTable from "../../../shared/components/ui/AgGridTable";
-
-
 import TransactionForm from "../components/TransactionForm";
-
 import { getTransactionColumnDefs } from "../utils/transactionTableConfig.jsx";
-
 import { DateObject } from "react-multi-date-picker";
-
 import { PlusCircle, Wallet, ArrowUp, ArrowDown } from "lucide-react";
 
 export default function TransactionsPage() {
@@ -28,11 +22,16 @@ export default function TransactionsPage() {
     handleDelete,
     handleSaveTransaction,
     fetchTransactions,
+    isLoading,
   } = useTransactionsLogic();
 
   useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
+    // داده‌ها فقط در صورتی واکشی می‌شوند که لیست خالی باشد
+    // این کار از واکشی‌های تکراری هنگام جابجایی بین صفحات جلوگیری می‌کند
+    if (transactions.length === 0) {
+      fetchTransactions();
+    }
+  }, [fetchTransactions, transactions.length]);
 
   const columnDefs = useMemo(
     () => getTransactionColumnDefs(handleOpenModal, handleDelete),
@@ -56,16 +55,15 @@ export default function TransactionsPage() {
 
   return (
     <div className="flex flex-col gap-4 md:gap-6 lg:gap-8">
-
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between items-center">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-content-800">
-    
           تراکنش‌های واریز و برداشت
         </h1>
         <Button
           variant="primary"
           onClick={() => handleOpenModal()}
-          icon={<PlusCircle size={20} />}>
+          icon={<PlusCircle size={20} />}
+        >
           ثبت تراکنش جدید
         </Button>
       </div>
@@ -90,12 +88,18 @@ export default function TransactionsPage() {
         />
       </div>
       <div className="bg-white rounded-xl shadow-lg w-full overflow-hidden">
-        <AgGridTable rowData={transactions} columnDefs={columnDefs} />
+        <AgGridTable
+          rowData={transactions}
+          columnDefs={columnDefs}
+          isLoading={isLoading} 
+        />
       </div>
       <Modal
         isOpen={isModalOpen}
+        isLoading={isLoading} 
         onClose={handleCloseModal}
-        title={editingTransaction ? "ویرایش تراکنش" : "ثبت تراکنش جدید"}>
+        title={editingTransaction ? "ویرایش تراکنش" : "ثبت تراکنش جدید"}
+      >
         <TransactionForm
           onSubmitSuccess={(formData) =>
             handleSubmitFormSuccess(formData, !!editingTransaction)
