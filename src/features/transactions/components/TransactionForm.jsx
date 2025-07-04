@@ -2,16 +2,11 @@ import { useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { transactionSchema } from "../utils/transactionSchemas";
-
 import DateInput from "../../../shared/components/ui/forms/DateInput";
 import TextInput from "../../../shared/components/ui/forms/TextInput";
 import TextareaInput from "../../../shared/components/ui/forms/TextareaInput";
 import SelectInput from "../../../shared/components/ui/forms/SelectInput";
 import Button from "../../../shared/components/ui/Button";
-
-import { DateObject } from "react-multi-date-picker";
-import persian from "react-date-object/calendars/persian";
-import persian_fa from "react-date-object/locales/persian_fa";
 
 export default function TransactionForm({
   onSubmitSuccess,
@@ -20,13 +15,16 @@ export default function TransactionForm({
 }) {
   const methods = useForm({
     resolver: yupResolver(transactionSchema),
-    defaultValues: initialData || {
-      date: new DateObject({ calendar: persian, locale: persian_fa }),
-      broker: "",
-      amount: "",
-      type: "deposit",
-      description: "",
-    },
+    // **تغییر اصلی اینجاست**
+    defaultValues: initialData
+      ? { ...initialData } // در حالت ویرایش، داده‌های اولیه خودش تاریخ استاندارد دارد
+      : {
+          date: new Date(), // در حالت افزودن، از شیء استاندارد Date استفاده می‌کنیم
+          broker: "",
+          amount: "",
+          type: "deposit",
+          description: "",
+        },
   });
 
   const {
@@ -37,21 +35,11 @@ export default function TransactionForm({
 
   useEffect(() => {
     if (isEditMode && initialData) {
-      const dataWithDateObject = {
-        ...initialData,
-        date: initialData.date
-          ? new DateObject({
-              date: initialData.date,
-              format: "YYYY/MM/DD",
-              calendar: persian,
-              locale: persian_fa,
-            })
-          : new DateObject({ calendar: persian, locale: persian_fa }),
-      };
-      reset(dataWithDateObject);
+      reset(initialData);
     } else if (!isEditMode) {
+      // **و تغییر اصلی اینجاست**
       reset({
-        date: new DateObject({ calendar: persian, locale: persian_fa }),
+        date: new Date(), // ریست کردن فرم هم با شیء استاندارد Date انجام می‌شود
         broker: "",
         amount: "",
         type: "deposit",
@@ -60,18 +48,12 @@ export default function TransactionForm({
     }
   }, [initialData, isEditMode, reset]);
 
-  const handleFormSubmit = async (formData) => {
-    const processedData = {
-      ...formData,
-      amount: parseFloat(formData.amount),
-      date:
-        formData.date instanceof DateObject
-          ? formData.date.format("YYYY/MM/DD")
-          : formData.date,
-    };
-
+  const handleFormSubmit = (formData) => {
     if (onSubmitSuccess) {
-      onSubmitSuccess(processedData, isEditMode);
+      const dataToSend = isEditMode
+        ? { ...formData, id: initialData.id }
+        : formData;
+      onSubmitSuccess(dataToSend);
     }
   };
 
@@ -110,7 +92,11 @@ export default function TransactionForm({
         </div>
         <div className="flex justify-end pt-3">
           <Button type="submit" variant="primary" disabled={isSubmitting}>
-            {isEditMode ? "ذخیره تغییرات" : "ثبت تراکنش"}
+            {isSubmitting
+              ? "در حال پردازش..."
+              : isEditMode
+              ? "ذخیره تغییرات"
+              : "ثبت تراکنش"}
           </Button>
         </div>
       </form>

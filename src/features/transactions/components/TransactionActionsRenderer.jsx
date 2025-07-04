@@ -6,17 +6,19 @@ const TransactionActionsRenderer = ({ data, onEdit, onDelete }) => (
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => onEdit(data)}
+      onClick={() => onEdit(data)} // با کلیک، تابع onEdit با داده‌های کامل ردیف فراخوانی می‌شود
       title="ویرایش"
-      className="h-8 w-8 shadow-none text-blue-600 hover:bg-blue-100">
+      className="h-8 w-8 shadow-none text-primary-600 hover:bg-primary-100"
+    >
       <Edit size={16} />
     </Button>
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => onDelete(data.id)}
+      onClick={() => onDelete(data.id)} // با کلیک، تابع onDelete با شناسه ردیف فراخوانی می‌شود
       title="حذف"
-      className="h-8 w-8 shadow-none text-danger-600 hover:bg-danger-100">
+      className="h-8 w-8 shadow-none text-danger-600 hover:bg-danger-100"
+    >
       <Trash2 size={16} />
     </Button>
   </div>

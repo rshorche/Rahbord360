@@ -28,7 +28,8 @@ const DateInput = ({
       name={name}
       error={error}
       className={className}
-      containerClassName="flex-row-reverse items-center pr-3">
+      containerClassName="flex-row-reverse items-center pr-3"
+    >
       <span className="pl-2 text-content-500">
         <CalendarDays size={20} />
       </span>
@@ -36,27 +37,19 @@ const DateInput = ({
         control={control}
         name={name}
         rules={rules}
-        render={({ field: { onChange, onBlur, value, ref } }) => {
-          let valueForPicker = value;
-
-          if (typeof value === "string" && value) {
-            valueForPicker = new DateObject({
-              date: value,
-              format: "YYYY/MM/DD",
-              calendar: persian,
-              locale: persian_fa,
-            });
-          }
+        render={({ field: { onChange, onBlur, value } }) => {
+          // تبدیل مقدار به شیء DateObject برای نمایش در تقویم
+          const dateValue = value ? new DateObject({ date: value }) : null;
 
           return (
             <DatePicker
-              ref={ref}
               id={name}
-              value={valueForPicker}
+              value={dateValue}
               onBlur={onBlur}
               onClose={() => onBlur()}
+              // onChange یک شیء DateObject برمی‌گرداند، ما آن را به Date استاندارد جاوااسکریپت تبدیل می‌کنیم
               onChange={(dateObject) => {
-                onChange(dateObject ? dateObject.format("YYYY/MM/DD") : null);
+                onChange(dateObject ? dateObject.toDate() : null);
               }}
               calendar={persian}
               locale={persian_fa}

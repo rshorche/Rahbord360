@@ -12,6 +12,7 @@ import SignupPage from "../features/auth/pages/ SignupPage";
 import ForgotPasswordPage from "../features/auth/pages/ ForgotPasswordPage";
 import UpdatePasswordPage from "../features/auth/pages/UpdatePasswordPage";
 import ProtectedRoute from "../shared/components/auth/ProtectedRoute";
+import CoveredCallPage from "../features/covered-call/pages/CoveredCallPage";
 
 const router = createBrowserRouter([
   {
@@ -43,6 +44,7 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardOverviewPage /> },
       { path: "transactions", element: <TransactionsPage /> },
       { path: "portfolio", element: <PortfolioPage /> },
+      { path: "covered-calls", element: <CoveredCallPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

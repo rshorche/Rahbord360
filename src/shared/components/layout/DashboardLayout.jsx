@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Menu, Home, BarChart2, Briefcase } from "lucide-react";
+// 1. آیکون ShieldCheck برای کاورد کال اضافه شد
+import { Menu, Home, BarChart2, Briefcase, ShieldCheck } from "lucide-react";
 import { cn } from "../../utils/cn";
 import Sidebar from "../Sidebar";
-import useAllSymbolsStore from "../../store/useAllSymbolsStore"; 
-import usePriceHistoryStore from "../../store/usePriceHistoryStore"; 
+import useAllSymbolsStore from "../../store/useAllSymbolsStore";
+import usePriceHistoryStore from "../../store/usePriceHistoryStore";
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
@@ -48,7 +49,7 @@ export default function DashboardLayout() {
   }, [location.pathname, closeSidebar]);
 
   useEffect(() => {
-    fetchAllSymbolsForSearch(); 
+    fetchAllSymbolsForSearch();
 
     fetchAllSymbolsFromDB();
     const refreshInterval = setInterval(() => {
@@ -58,7 +59,7 @@ export default function DashboardLayout() {
       fetchAllSymbolsFromDB();
     }, 30 * 1000);
 
-    return () => clearInterval(refreshInterval); 
+    return () => clearInterval(refreshInterval);
   }, [fetchAllSymbolsForSearch, fetchAllSymbolsFromDB]);
 
   const navigationLinks = [
@@ -80,6 +81,13 @@ export default function DashboardLayout() {
       icon: <Briefcase size={24} />,
       end: true,
     },
+    // 2. لینک جدید کاورد کال در اینجا اضافه شد
+    {
+      to: "/dashboard/covered-calls",
+      label: "کاورد کال",
+      icon: <ShieldCheck size={24} />,
+      end: true,
+    },
   ];
 
   return (
@@ -87,7 +95,8 @@ export default function DashboardLayout() {
       className={cn(
         "relative min-h-screen bg-gray-100 flex flex-col",
         "lg:flex-row overflow-hidden"
-      )}>
+      )}
+    >
       <Sidebar
         isOpen={isSidebarOpen}
         closeSidebar={closeSidebar}
@@ -101,7 +110,8 @@ export default function DashboardLayout() {
           "flex-1 transition-all duration-300 ease-in-out",
           "pt-4 sm:pt-6 lg:pt-6",
           "px-4 sm:px-6 pb-6"
-        )}>
+        )}
+      >
         <Outlet />
       </main>
       {!isSidebarOpen && window.innerWidth < 1024 && (
@@ -112,7 +122,8 @@ export default function DashboardLayout() {
             "text-gray-700 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 shadow-lg",
             "transition-all lg:hidden"
           )}
-          aria-label="باز کردن سایدبار">
+          aria-label="باز کردن سایدبار"
+        >
           <Menu size={24} />
         </button>
       )}
@@ -122,7 +133,8 @@ export default function DashboardLayout() {
           className={cn(
             "fixed inset-0 z-20 bg-black/40 backdrop-blur-xs lg:hidden"
           )}
-          aria-hidden="true"></div>
+          aria-hidden="true"
+        ></div>
       )}
     </div>
   );

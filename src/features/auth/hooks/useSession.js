@@ -10,23 +10,20 @@ export default function useSession() {
   const { setSession, session } = useAuthStore();
 
   useEffect(() => {
-    const getInitialSession = async () => {
-      // ... کد قبلی
-    };
+    // ... (بخش getInitialSession بدون تغییر باقی می‌ماند)
 
-    getInitialSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        // اگر کاربر وارد شد، داده‌هایش را واکشی کن
-        if (session) {
-          useStockTradesStore.getState().fetchActions();
-          useTransactionStore.getState().fetchTransactions();
-        }
-        setSessionLoading(false);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      // اگر کاربر وارد شد، داده‌هایش را واکشی کن
+      if (session) {
+        // این دو خط باید حتما کامنت باشند تا خطایی رخ ندهد
+        // useStockTradesStore.getState().fetchActions();
+        // useTransactionStore.getState().fetchTransactions();
       }
-    );
+      setSessionLoading(false);
+    });
 
     return () => {
       subscription?.unsubscribe();

@@ -1,8 +1,31 @@
-import TransactionActionsRenderer from "../components/TransactionActionsRenderer"; // مسیر صحیح کامپوننت ActionsRenderer
-import { formatCurrency } from "../../../shared/utils/formatters"; // مسیر صحیح تابع فرمت‌دهی
+import TransactionActionsRenderer from "../components/TransactionActionsRenderer";
+import { formatCurrency } from "../../../shared/utils/formatters";
+import { DateObject } from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
 
-export const getTransactionColumnDefs = (handleOpenModal, handleDelete) => [
-  { headerName: "تاریخ", field: "date", width: 130, sort: "desc" },
+export const getTransactionColumnDefs = (onEdit, onDelete) => [
+  {
+    headerName: "تاریخ",
+    field: "date",
+    width: 130,
+    sort: "desc",
+    valueFormatter: (params) => {
+      if (!params.value) return "";
+
+      // ابتدا رشته تاریخ میلادی را به یک شیء Date استاندارد تبدیل می‌کنیم
+      const gregorianDate = new Date(params.value);
+
+      // سپس این شیء را به DateObject می‌دهیم تا به تقویم شمسی تبدیل کند
+      const jalaliDate = new DateObject({
+        date: gregorianDate,
+        calendar: persian,
+        locale: persian_fa,
+      }).format("YYYY/MM/DD");
+
+      return jalaliDate;
+    },
+  },
   {
     headerName: "نوع",
     field: "type",
@@ -11,9 +34,10 @@ export const getTransactionColumnDefs = (handleOpenModal, handleDelete) => [
       <span
         className={`px-2 py-1 text-xs rounded-full font-medium ${
           p.value === "deposit"
-            ? "bg-success-light text-success-800"
-            : "bg-danger-light text-danger-800"
-        }`}>
+            ? "bg-success-100 text-success-800"
+            : "bg-danger-100 text-danger-800"
+        }`}
+      >
         {p.value === "deposit" ? "واریز" : "برداشت"}
       </span>
     ),
@@ -36,7 +60,10 @@ export const getTransactionColumnDefs = (handleOpenModal, handleDelete) => [
     headerName: "عملیات",
     width: 100,
     cellRenderer: TransactionActionsRenderer,
-    cellRendererParams: { onEdit: handleOpenModal, onDelete: handleDelete }, // پاس دادن توابع به Cell Renderer
+    cellRendererParams: {
+      onEdit: onEdit,
+      onDelete: onDelete,
+    },
     sortable: false,
     resizable: false,
   },
