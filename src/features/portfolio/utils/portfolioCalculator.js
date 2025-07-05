@@ -1,194 +1,120 @@
 export const processPortfolio = (actions, allSymbolsData) => {
   const openPositionsMap = new Map();
-  const closedPositions = [];
-
   const symbolLatestPrices = new Map();
   allSymbolsData.forEach((s) => {
-    if (s.l18 && s.pl !== undefined && s.pl !== null) {
-      symbolLatestPrices.set(s.l18, s.pl);
-    }
+    if (s.symbol && s.price != null) symbolLatestPrices.set(s.symbol, s.price / 10);
   });
 
-  const sortedActions = [...actions].sort((a, b) => {
-    const dateA = a.date.replace(/[/ ]/g, "");
-    const dateB = b.date.replace(/[/ ]/g, "");
-    return dateA.localeCompare(dateB);
-  });
+  const sortedActions = [...actions].sort((a, b) => new Date(a.date) - new Date(b.date));
+  
+  let totalPortfolioValue = 0;
 
   sortedActions.forEach((action) => {
-    const {
-      id,
-      date,
-      symbol,
-      type,
-      quantity,
-      price,
-      commission,
-      amount,
-      revaluation_percentage,
-      premium_type,
-    } = action;
-
-    if (!symbol) {
-      console.warn(
-        `رویداد با شناسه ${id} فاقد نماد است و از محاسبات کنار گذاشته می‌شود.`
-      );
-      return;
-    }
-
-    let position = openPositionsMap.get(symbol);
+    if (!action.symbol) return;
+    let position = openPositionsMap.get(action.symbol);
     if (!position) {
       position = {
-        symbol,
-        remainingQty: 0,
-        totalBuyCost: 0,
-        totalSellRevenue: 0,
-        totalRealizedPL: 0,
-        totalDividend: 0,
-        totalBonusShares: 0,
-        totalRightsExerciseCost: 0,
-        totalRightsSellRevenue: 0,
-        firstBuyDate: null,
-        totalBoughtQty: 0,
-        totalBoughtValue: 0,
-        totalSoldQty: 0,
-        totalSoldValue: 0,
-        detailData: [],
+        symbol: action.symbol, remainingQty: 0, totalBuyCost: 0, totalRealizedPL: 0, totalDividend: 0, totalRightsSellRevenue: 0, detailData: [], firstBuyDate: null, totalBoughtQty: 0, totalSoldQty: 0, totalBoughtValue: 0, totalSoldValue: 0,
+        bonusQty: 0,
+        revaluationQtyIncrease: 0,
+        rightsQty: 0,
+        premiumQty: 0,
       };
-      openPositionsMap.set(symbol, position);
+      openPositionsMap.set(action.symbol, position);
     }
-
     position.detailData.push(action);
-    position.detailData.sort((a, b) => {
-      const dateA = a.date.replace(/[/ ]/g, "");
-      const dateB = b.date.replace(/[/ ]/g, "");
-      return dateA.localeCompare(dateB);
-    });
 
-    const currentPrice = symbolLatestPrices.get(symbol) || 0;
+    switch (action.type) {
+      case 'buy':
+        if (!position.firstBuyDate) position.firstBuyDate = action.date;
+        const buyCost = (action.quantity * action.price) + (action.commission || 0);
+        position.remainingQty += action.quantity;
+        position.totalBuyCost += buyCost;
+        position.totalBoughtQty += action.quantity;
+        position.totalBoughtValue += buyCost;
+        break;
+      
+      case 'rights_exercise':
+        if (!position.firstBuyDate) position.firstBuyDate = action.date;
+        const rightsCost = (action.quantity * action.price) + (action.commission || 0);
+        position.remainingQty += action.quantity;
+        position.totalBuyCost += rightsCost;
+        position.totalBoughtQty += action.quantity;
+        position.totalBoughtValue += rightsCost;
+        position.rightsQty += action.quantity; 
+        break;
+        
+      case 'sell':
+        const avgCostPerShare = position.remainingQty > 0 ? position.totalBuyCost / position.remainingQty : 0;
+        const sellRevenue = (action.quantity * action.price) - (action.commission || 0);
+        position.totalRealizedPL += sellRevenue - (action.quantity * avgCostPerShare);
+        position.totalBuyCost -= action.quantity * avgCostPerShare;
+        position.remainingQty -= action.quantity;
+        position.totalSoldQty += action.quantity;
+        position.totalSoldValue += sellRevenue;
+        break;
 
-    switch (type) {
-      case "buy": {
-        position.remainingQty += quantity;
-        position.totalBuyCost += quantity * price + (commission || 0);
-        position.totalBoughtQty += quantity;
-        position.totalBoughtValue += quantity * price + (commission || 0);
-        if (!position.firstBuyDate) {
-          position.firstBuyDate = date;
+      case 'dividend':
+        position.totalDividend += action.amount;
+        break;
+
+      case 'premium':
+        if (action.premium_type === 'cash_payment') position.totalDividend += action.amount;
+        if (action.premium_type === 'bonus_shares') {
+          position.remainingQty += action.quantity;
+          position.totalBoughtQty += action.quantity;
+          position.premiumQty += action.quantity; 
         }
         break;
-      }
-      case "sell": {
-        const avgCostBeforeSell =
-          position.remainingQty > 0
-            ? position.totalBuyCost / position.remainingQty
-            : 0;
-        position.remainingQty -= quantity;
-        position.totalSellRevenue += quantity * price - (commission || 0);
-        position.totalSoldQty += quantity;
-        position.totalSoldValue += quantity * price - (commission || 0);
-        position.totalRealizedPL +=
-          quantity * price - (commission || 0) - quantity * avgCostBeforeSell;
+      
+      case 'bonus':
+        position.remainingQty += action.quantity;
+        position.totalBoughtQty += action.quantity;
+        position.bonusQty += action.quantity; 
         break;
-      }
-      case "dividend": {
-        position.totalDividend += amount;
+      
+      case 'rights_sell':
+        position.totalRightsSellRevenue += action.amount;
         break;
-      }
-      case "bonus": {
-        position.remainingQty += quantity;
-        position.totalBonusShares += quantity;
-        position.totalBoughtQty += quantity;
+
+      case 'revaluation':
+        const currentQty = position.remainingQty;
+        const multiplier = 1 + (action.revaluation_percentage / 100);
+        const newQty = currentQty * multiplier;
+        const addedQty = newQty - currentQty;
+        
+        position.remainingQty = newQty;
+        position.totalBoughtQty += addedQty;
+        position.revaluationQtyIncrease += addedQty;
         break;
-      }
-      case "rights_exercise": {
-        position.remainingQty += quantity;
-        position.totalBuyCost += quantity * price + (commission || 0);
-        position.totalRightsExerciseCost += quantity * price + (commission || 0);
-        position.totalBoughtQty += quantity;
-        position.totalBoughtValue += quantity * price + (commission || 0);
-        break;
-      }
-      case "rights_sell": {
-        position.totalRightsSellRevenue += amount;
-        position.totalBuyCost -= amount; 
-        break;
-      }
-      case "revaluation": {
-        if (revaluation_percentage > 0) {
-          const newQtyMultiplier = 1 + revaluation_percentage / 100;
-          position.remainingQty = position.remainingQty * newQtyMultiplier;
-          position.totalBoughtQty = position.totalBoughtQty * newQtyMultiplier;
-        }
-        break;
-      }
-      case "premium": {
-        if (premium_type === "cash_payment") {
-          position.totalDividend += amount;
-        } else if (premium_type === "bonus_shares") {
-          position.remainingQty += quantity;
-          position.totalBonusShares += quantity;
-          position.totalBoughtQty += quantity;
-        }
-        break;
-      }
-      default:
-        console.warn(`نوع رویداد ناشناخته: ${type}`);
     }
+  });
 
-    if (position.remainingQty > 0) {
-      position.currentPrice = currentPrice;
-      position.currentValue = position.remainingQty * currentPrice;
+  const finalPositions = [];
+  openPositionsMap.forEach((position, symbol) => {
+    const latestPrice = symbolLatestPrices.get(symbol) || 0;
+    position.currentPrice = latestPrice;
+    position.currentValue = position.remainingQty * latestPrice;
+    totalPortfolioValue += position.currentValue;
+    if (position.remainingQty > 0.001) {
       position.avgBuyPriceAdjusted = position.totalBuyCost / position.remainingQty;
-      position.unrealizedPL = position.currentValue - position.remainingQty * position.avgBuyPriceAdjusted;
+      position.unrealizedPL = position.currentValue - position.totalBuyCost;
     } else {
-      position.currentPrice = 0;
-      position.currentValue = 0;
       position.unrealizedPL = 0;
     }
+    position.totalPL = position.totalRealizedPL + position.unrealizedPL + position.totalDividend + position.totalRightsSellRevenue;
+    const totalInvestment = position.totalBoughtValue - position.totalRightsSellRevenue;
+    position.percentagePL = totalInvestment > 0 ? (position.totalPL / totalInvestment) * 100 : 0;
+    position.avgBoughtPrice = position.totalBoughtQty > 0 ? position.totalBoughtValue / position.totalBoughtQty : 0;
+    position.avgSoldPrice = position.totalSoldQty > 0 ? position.totalSoldValue / position.totalSoldQty : 0;
+    finalPositions.push(position);
+  });
+  
+  finalPositions.forEach(p => {
+    p.percentageOfPortfolio = totalPortfolioValue > 0 ? (p.currentValue / totalPortfolioValue) * 100 : 0;
   });
 
-  const finalOpenPositions = [];
-  openPositionsMap.forEach((position) => {
-    position.avgBuyPriceAdjusted =
-      position.remainingQty > 0
-        ? position.totalBuyCost / position.remainingQty
-        : 0;
-    position.unrealizedPL =
-      position.remainingQty > 0
-        ? position.currentValue -
-          position.remainingQty * position.avgBuyPriceAdjusted
-        : 0;
-    position.totalPLWithDividend =
-      position.totalRealizedPL +
-      position.totalDividend +
-      position.totalRightsSellRevenue +
-      position.unrealizedPL;
-    
-    const totalInvestment = position.totalBoughtValue;
-    position.percentagePL =
-      totalInvestment > 0
-        ? (position.totalPLWithDividend / totalInvestment) * 100
-        : 0;
-    
-    position.avgBoughtPrice =
-      position.totalBoughtQty > 0
-        ? position.totalBoughtValue / position.totalBoughtQty
-        : 0;
-    position.avgSoldPrice =
-      position.totalSoldQty > 0
-        ? position.totalSoldValue / position.totalSoldQty
-        : 0;
-
-    if (position.remainingQty > 0.001) { // برای جلوگیری از نمایش پوزیشن‌های با تعداد بسیار کم (خطای محاسباتی)
-      finalOpenPositions.push(position);
-    } else {
-      closedPositions.push(position);
-    }
-  });
-
-  finalOpenPositions.sort((a, b) => b.symbol.localeCompare(a.symbol));
-  closedPositions.sort((a, b) => b.symbol.localeCompare(a.symbol));
-
-  return { openPositions: finalOpenPositions, closedPositions };
+  const openPositions = finalPositions.filter(p => p.remainingQty > 0.001);
+  const closedPositions = finalPositions.filter(p => p.remainingQty <= 0.001);
+  return { openPositions, closedPositions };
 };

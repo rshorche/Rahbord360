@@ -7,9 +7,6 @@ import DateInput from "../../../../shared/components/ui/forms/DateInput";
 import TextInput from "../../../../shared/components/ui/forms/TextInput";
 import Button from "../../../../shared/components/ui/Button";
 import SelectInput from "../../../../shared/components/ui/forms/SelectInput";
-import { DateObject } from "react-multi-date-picker";
-import persian from "react-date-object/calendars/persian";
-import persian_fa from "react-date-object/locales/persian_fa";
 
 export default function AddRevaluationForm({
   onSubmitSuccess,
@@ -18,14 +15,17 @@ export default function AddRevaluationForm({
   isEditMode = false,
 }) {
   const { addAction, updateAction } = useStockTradesStore();
+
   const methods = useForm({
     resolver: yupResolver(revaluationSchema),
-    defaultValues: initialData || {
-      date: new DateObject({ calendar: persian, locale: persian_fa }),
-      symbol: "",
-      revaluation_percentage: "",
-      type: "revaluation",
-    },
+    defaultValues: initialData
+      ? { ...initialData, date: new Date(initialData.date) }
+      : {
+          date: new Date(),
+          symbol: "",
+          revaluation_percentage: "",
+          type: "revaluation",
+        },
   });
 
   const {
@@ -36,51 +36,22 @@ export default function AddRevaluationForm({
 
   useEffect(() => {
     if (isEditMode && initialData) {
-      const dataWithDateObject = {
-        ...initialData,
-        date: initialData.date
-          ? new DateObject({
-              date: initialData.date,
-              format: "YYYY/MM/DD",
-              calendar: persian,
-              locale: persian_fa,
-            })
-          : new DateObject({ calendar: persian, locale: persian_fa }),
-      };
-      reset(dataWithDateObject);
+      reset({ ...initialData, date: new Date(initialData.date) });
     } else if (!isEditMode) {
-      reset({
-        date: new DateObject({ calendar: persian, locale: persian_fa }),
-        symbol: "",
-        revaluation_percentage: "",
-        type: "revaluation",
-      });
+      reset({ date: new Date(), symbol: "", revaluation_percentage: "", type: "revaluation" });
     }
   }, [initialData, isEditMode, reset]);
 
   const handleFormSubmit = async (formData) => {
-    const revaluationAction = {
-      ...formData,
-      revaluation_percentage: parseFloat(formData.revaluation_percentage),
-      date:
-        formData.date instanceof DateObject
-          ? formData.date.format("YYYY/MM/DD")
-          : formData.date,
-      price: 0,
-      quantity: 0,
-      commission: 0,
-      amount: 0,
-      notes: "افزایش سرمایه از محل تجدید ارزیابی",
-    };
-    let success = false;
-    if (isEditMode) {
-      success = await updateAction(initialData.id, revaluationAction);
-    } else {
-      success = await addAction(revaluationAction);
-    }
-    if (success && onSubmitSuccess) onSubmitSuccess();
-  };
+    const success = isEditMode
+      ? await updateAction(initialData.id, formData)
+      : await addAction(formData);
 
+    if (success && onSubmitSuccess) {
+      onSubmitSuccess();
+    }
+  };
+  
   const symbolOptions = portfolioSymbols.map((symbol) => ({
     value: symbol,
     label: symbol,
@@ -103,13 +74,14 @@ export default function AddRevaluationForm({
         </div>
         <TextInput
           name="revaluation_percentage"
-          label="درصد افزایش سرمایه"
+          label="درصد افزایش سرمایه (٪)"
           type="number"
           inputMode="decimal"
+          placeholder="مثلاً: 500 برای 500٪"
         />
         <div className="flex justify-end pt-3">
           <Button type="submit" variant="primary" disabled={isSubmitting}>
-            {isEditMode ? "ذخیره تغییرات" : "ثبت تجدید ارزیابی"}
+            {isSubmitting ? "در حال پردازش..." : (isEditMode ? "ذخیره تغییرات" : "ثبت تجدید ارزیابی")}
           </Button>
         </div>
       </form>

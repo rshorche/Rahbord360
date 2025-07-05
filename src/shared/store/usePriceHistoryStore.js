@@ -8,6 +8,9 @@ const usePriceHistoryStore = create((set) => ({
   lastFetchTimestamp: null,
 
   fetchAllSymbolsFromDB: async () => {
+    if (set.getState && set.getState().lastFetchTimestamp) {
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
       const STOCK_DATA_RECORD_ID = "all";
@@ -16,23 +19,16 @@ const usePriceHistoryStore = create((set) => ({
         .from("stock_data")
         .select("data, fetched_at")
         .eq("id", STOCK_DATA_RECORD_ID)
-        .single(); 
+        .single();
 
-      if (error) {
-        console.error(
-          "خطا در واکشی آخرین داده سهام از دیتابیس:",
-          error.message
-        );
-        throw error;
-      }
+      if (error) throw error;
 
       if (stockDataRecord && Array.isArray(stockDataRecord.data)) {
-        const allSymbolsFromDB = stockDataRecord.data;
-
         const latestPricesMap = new Map();
-        allSymbolsFromDB.forEach((s) => {
-          if (s.l18 && s.pl !== undefined && s.pl !== null) {
+        stockDataRecord.data.forEach((s) => {
+          if (s.l18 && s.pl != null) {
             latestPricesMap.set(s.l18, {
+              symbol: s.l18, 
               price: s.pl,
               timestamp: stockDataRecord.fetched_at,
             });
@@ -44,20 +40,11 @@ const usePriceHistoryStore = create((set) => ({
           lastFetchTimestamp: stockDataRecord.fetched_at,
         });
       } else {
-        console.warn(
-          "داده معتبری در جدول stock_data برای ID:",
-          STOCK_DATA_RECORD_ID,
-          "یافت نشد. یا داده آرایه نیست."
-        );
-        set({
-          priceHistory: new Map(),
-          isLoading: false,
-          lastFetchTimestamp: null,
-        });
+        set({ priceHistory: new Map(), isLoading: false });
       }
     } catch (error) {
-      console.error("خطا در واکشی آخرین قیمت‌ها از دیتابیس:", error.message);
-      set({ error: error.message, isLoading: false, lastFetchTimestamp: null });
+      console.error("Error fetching price history:", error.message);
+      set({ error: error.message, isLoading: false });
     }
   },
 }));

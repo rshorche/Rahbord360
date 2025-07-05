@@ -8,7 +8,8 @@ const StockTradeActionsRenderer = ({ data, onEdit, onDelete }) => (
       size="icon"
       onClick={() => onEdit(data)}
       title="ویرایش"
-      className="h-8 w-8 shadow-none text-primary-600 hover:bg-primary-100">
+      className="h-8 w-8 shadow-none text-primary-600 hover:bg-primary-100"
+    >
       <Edit size={16} />
     </Button>
     <Button
@@ -16,7 +17,8 @@ const StockTradeActionsRenderer = ({ data, onEdit, onDelete }) => (
       size="icon"
       onClick={() => onDelete(data.id)}
       title="حذف"
-      className="h-8 w-8 shadow-none text-danger-600 hover:bg-danger-100">
+      className="h-8 w-8 shadow-none text-danger-600 hover:bg-danger-100"
+    >
       <Trash2 size={16} />
     </Button>
   </div>

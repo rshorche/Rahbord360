@@ -5,8 +5,8 @@ import AddBonusForm from "./forms/AddBonusForm";
 import AddRightsForm from "./forms/AddRightsForm";
 import AddRevaluationForm from "./forms/AddRevaluationForm";
 import AddPremiumForm from "./forms/AddPremiumForm";
-import { cn } from "../../../shared/utils/cn";
 import SelectInput from "../../../shared/components/ui/forms/SelectInput";
+import { cn } from "../../../shared/utils/cn";
 
 export default function AddActionModal({
   onSubmitSuccess,
@@ -30,143 +30,60 @@ export default function AddActionModal({
           setCapitalIncreaseType(type);
         }
       }
-    } else {
-      setMainTab("main_trades");
-      setCapitalIncreaseType("dividend");
     }
   }, [initialData, isEditMode]);
 
   const renderForm = () => {
     const portfolioSymbols = portfolioPositions.map((p) => p.symbol);
-    console.log(
-      "AddActionModal: Rendering form for type:",
-      mainTab,
-      "and sub-type:",
-      capitalIncreaseType,
-      "isEditMode:",
-      isEditMode
-    );
+    const formProps = { onSubmitSuccess, portfolioSymbols, initialData, isEditMode };
 
     if (isEditMode) {
-      if (["buy", "sell"].includes(initialData.type)) {
-        return (
-          <AddBuySellForm
-            onSubmitSuccess={onSubmitSuccess}
-            initialData={initialData}
-            isEditMode={isEditMode}
-          />
-        );
-      } else if (initialData.type === "dividend") {
-        return (
-          <AddDividendForm
-            onSubmitSuccess={onSubmitSuccess}
-            portfolioSymbols={portfolioSymbols}
-            initialData={initialData}
-            isEditMode={isEditMode}
-          />
-        );
-      } else if (initialData.type === "bonus") {
-        return (
-          <AddBonusForm
-            onSubmitSuccess={onSubmitSuccess}
-            portfolioSymbols={portfolioSymbols}
-            initialData={initialData}
-            isEditMode={isEditMode}
-          />
-        );
-      } else if (
-        ["rights_exercise", "rights_sell"].includes(initialData.type)
-      ) {
-        return (
-          <AddRightsForm
-            onSubmitSuccess={onSubmitSuccess}
-            portfolioSymbols={portfolioSymbols}
-            initialData={initialData}
-            isEditMode={isEditMode}
-          />
-        );
-      } else if (initialData.type === "revaluation") {
-        return (
-          <AddRevaluationForm
-            onSubmitSuccess={onSubmitSuccess}
-            portfolioSymbols={portfolioSymbols}
-            initialData={initialData}
-            isEditMode={isEditMode}
-          />
-        );
-      } else if (initialData.type === "premium") {
-        return (
-          <AddPremiumForm
-            onSubmitSuccess={onSubmitSuccess}
-            portfolioSymbols={portfolioSymbols}
-            initialData={initialData}
-            isEditMode={isEditMode}
-          />
-        );
-      } else {
-        return (
-          <p className="text-danger-600 text-center">
-            نوع رویداد نامعتبر است یا فرمی برای ویرایش آن وجود ندارد.
-          </p>
-        );
+      switch (initialData.type) {
+        case 'buy':
+        case 'sell':
+          return <AddBuySellForm {...formProps} />;
+        case 'dividend':
+          return <AddDividendForm {...formProps} />;
+        case 'bonus':
+          return <AddBonusForm {...formProps} />;
+        case 'rights_exercise':
+        case 'rights_sell':
+          return <AddRightsForm {...formProps} />;
+        case 'revaluation':
+          return <AddRevaluationForm {...formProps} />;
+        case 'premium':
+          return <AddPremiumForm {...formProps} />;
+        default:
+          return <p>نوع رویداد برای ویرایش معتبر نیست.</p>;
       }
     }
 
     if (mainTab === "main_trades") {
       return <AddBuySellForm onSubmitSuccess={onSubmitSuccess} />;
-    } else if (mainTab === "capital_increase") {
+    } 
+    
+    if (mainTab === "capital_increase") {
       switch (capitalIncreaseType) {
         case "dividend":
-          return (
-            <AddDividendForm
-              onSubmitSuccess={onSubmitSuccess}
-              portfolioSymbols={portfolioSymbols}
-            />
-          );
+          return <AddDividendForm onSubmitSuccess={onSubmitSuccess} portfolioSymbols={portfolioSymbols} />;
         case "bonus":
-          return (
-            <AddBonusForm
-              onSubmitSuccess={onSubmitSuccess}
-              portfolioSymbols={portfolioSymbols}
-            />
-          );
+          return <AddBonusForm onSubmitSuccess={onSubmitSuccess} portfolioSymbols={portfolioSymbols} />;
         case "rights":
-          return (
-            <AddRightsForm
-              onSubmitSuccess={onSubmitSuccess}
-              portfolioSymbols={portfolioSymbols}
-            />
-          );
+          return <AddRightsForm onSubmitSuccess={onSubmitSuccess} portfolioSymbols={portfolioSymbols} />;
         case "revaluation":
-          return (
-            <AddRevaluationForm
-              onSubmitSuccess={onSubmitSuccess}
-              portfolioSymbols={portfolioSymbols}
-            />
-          );
+          return <AddRevaluationForm onSubmitSuccess={onSubmitSuccess} portfolioSymbols={portfolioSymbols} />;
         case "premium":
-          return (
-            <AddPremiumForm
-              onSubmitSuccess={onSubmitSuccess}
-              portfolioSymbols={portfolioSymbols}
-            />
-          );
+          return <AddPremiumForm onSubmitSuccess={onSubmitSuccess} portfolioSymbols={portfolioSymbols} />;
         default:
-          return (
-            <p className="text-danger-600 text-center">
-              نوع رویداد افزایش سرمایه نامعتبر است.
-            </p>
-          );
+          return null;
       }
     }
     return null;
   };
 
-  const tabButtonClasses =
-    "px-4 py-2 text-sm font-medium transition-colors focus:outline-none";
+  const tabButtonClasses = "px-4 py-2 text-sm font-medium transition-colors focus:outline-none";
   const activeTabClasses = "border-b-2 border-primary-500 text-primary-600";
-  const inactiveTabClasses =
-    "text-content-500 hover:text-content-700 border-b-2 border-transparent";
+  const inactiveTabClasses = "text-content-500 hover:text-content-700 border-b-2 border-transparent";
 
   const capitalIncreaseOptions = [
     { value: "dividend", label: "سود نقدی" },
@@ -179,65 +96,32 @@ export default function AddActionModal({
   return (
     <div className="space-y-4">
       <div className="border-b border-content-200">
-        <nav
-          className="-mb-px flex space-x-2 rtl:space-x-reverse flex-wrap"
-          aria-label="Tabs">
+        <nav className="-mb-px flex space-x-4 rtl:space-x-reverse" aria-label="Tabs">
           {!isEditMode ? (
             <>
-              <button
-                onClick={() => setMainTab("main_trades")}
-                className={cn(
-                  tabButtonClasses,
-                  mainTab === "main_trades"
-                    ? activeTabClasses
-                    : inactiveTabClasses
-                )}>
+              <button onClick={() => setMainTab("main_trades")} className={cn(tabButtonClasses, mainTab === "main_trades" ? activeTabClasses : inactiveTabClasses)}>
                 معاملات اصلی
               </button>
-              <button
-                onClick={() => setMainTab("capital_increase")}
-                className={cn(
-                  tabButtonClasses,
-                  mainTab === "capital_increase"
-                    ? activeTabClasses
-                    : inactiveTabClasses
-                )}>
+              <button onClick={() => setMainTab("capital_increase")} className={cn(tabButtonClasses, mainTab === "capital_increase" ? activeTabClasses : inactiveTabClasses)}>
                 افزایش سرمایه و سود
               </button>
             </>
           ) : (
-            <span
-              className={cn(
-                tabButtonClasses,
-                activeTabClasses,
-                "cursor-default"
-              )}>
-              {(() => {
-                const typeMap = {
-                  buy: "ویرایش خرید/فروش",
-                  sell: "ویرایش خرید/فروش",
-                  dividend: "ویرایش سود نقدی",
-                  bonus: "ویرایش سهام جایزه",
-                  rights_exercise: "ویرایش حق تقدم",
-                  rights_sell: "ویرایش حق تقدم",
-                  revaluation: "ویرایش تجدید ارزیابی",
-                  premium: "ویرایش صرف سهام",
-                };
-                return typeMap[initialData?.type] || "ویرایش رویداد";
-              })()}
+            <span className={cn(tabButtonClasses, activeTabClasses, "cursor-default")}>
+              ویرایش رویداد
             </span>
           )}
         </nav>
       </div>
-      <div className="pt-2 min-h-[300px]">
+      
+      <div className="pt-2 min-h-[350px]">
         {!isEditMode && mainTab === "capital_increase" && (
-          <div className="mb-4">
+          <div className="mb-6">
             <SelectInput
-              label="نوع رویداد افزایش سرمایه را انتخاب کنید"
+              label="نوع رویداد را انتخاب کنید"
               options={capitalIncreaseOptions}
               value={capitalIncreaseType}
               onChange={(e) => setCapitalIncreaseType(e.target.value)}
-              placeholder="یک نوع را انتخاب کنید"
             />
           </div>
         )}

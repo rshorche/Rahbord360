@@ -7,7 +7,9 @@ export default function DetailsActionRenderer({ data, onViewDetails }) {
       <Button
         className="p-1.5 h-8 w-8 rounded-md"
         variant="ghost"
-        onClick={() => onViewDetails(data)}>
+        onClick={() => onViewDetails(data)}
+        title="مشاهده جزئیات"
+      >
         <Eye size={18} />
       </Button>
     </div>

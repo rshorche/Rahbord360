@@ -1,29 +1,23 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import useStockTradesStore from "../store/useStockTradesStore";
 import usePriceHistoryStore from "../../../shared/store/usePriceHistoryStore";
+import useAllSymbolsStore from "../../../shared/store/useAllSymbolsStore";
 import { processPortfolio } from "../utils/portfolioCalculator.js";
+import { getMasterColumnDefs, getDetailColumnDefs } from "../utils/portfolioTableConfig.jsx";
+import { showConfirmAlert } from "../../../shared/utils/notifications";
 import AgGridTable from "../../../shared/components/ui/AgGridTable";
 import Modal from "../../../shared/components/ui/Modal";
 import AddActionModal from "../components/AddActionModal";
 import Button from "../../../shared/components/ui/Button";
-import {
-  getMasterColumnDefs,
-  getDetailColumnDefs,
-} from "../utils/portfolioTableConfig.jsx";
-import {
-  PlusCircle,
-  Wallet,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-} from "lucide-react";
-import { cn } from "../../../shared/utils/cn";
 import Card from "../../../shared/components/ui/Card";
-import { showConfirmAlert } from "../../../shared/utils/notifications";
+import { PlusCircle, Wallet, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 
 export default function PortfolioPage() {
-  const { actions, fetchActions, isLoading } = useStockTradesStore();
-  const { priceHistory } = usePriceHistoryStore();
+  const { actions, fetchActions, deleteAction, isLoading: isActionsLoading } = useStockTradesStore();
+  
+  const { priceHistory, fetchAllSymbolsFromDB } = usePriceHistoryStore(); 
+  
+  const { fetchAllSymbolsForSearch } = useAllSymbolsStore();
 
   const [activeTab, setActiveTab] = useState("open");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -33,231 +27,114 @@ export default function PortfolioPage() {
   const [detailData, setDetailData] = useState({ symbol: "", trades: [] });
 
   useEffect(() => {
-    if (actions.length === 0) {
-        fetchActions();
-    }
-  }, [fetchActions, actions.length]);
+    fetchActions();
+    fetchAllSymbolsFromDB(); 
+    fetchAllSymbolsForSearch();
+  }, [fetchActions, fetchAllSymbolsFromDB, fetchAllSymbolsForSearch]);
 
-  const { openPositions, closedPositions } = useMemo(() => {
+const { openPositions, closedPositions } = useMemo(() => {
     const latestPricesForCalculator = Array.from(priceHistory.entries()).map(
       ([symbol, data]) => ({
-        l18: symbol,
-        pl: data.price,
+        symbol: symbol,
+        price: data.price,
       })
     );
     return processPortfolio(actions, latestPricesForCalculator);
   }, [actions, priceHistory]);
+  
+  const portfolioMetrics = useMemo(() => {
+    const totalCurrentValue = openPositions.reduce((sum, pos) => sum + pos.currentValue, 0);
+    const totalUnrealizedPL = openPositions.reduce((sum, pos) => sum + pos.unrealizedPL, 0);
+    const allPositions = [...openPositions, ...closedPositions];
+    const totalRealizedReturn = allPositions.reduce((sum, pos) => sum + pos.totalRealizedPL + pos.totalDividend + pos.totalRightsSellRevenue, 0);
+    return { totalCurrentValue, totalUnrealizedPL, totalRealizedReturn };
+  }, [openPositions, closedPositions]);
 
-  const handleOpenAddModal = useCallback(() => {
-    setEditingAction(null);
-    setIsEditActionModalOpen(false);
-    setIsAddModalOpen(true);
-  }, []);
-
+  const handleOpenAddModal = useCallback(() => setIsAddModalOpen(true), []);
   const handleCloseAddModal = useCallback(() => setIsAddModalOpen(false), []);
 
   const handleOpenDetailModal = useCallback((summaryRowData) => {
-    setDetailData({
-      symbol: summaryRowData.symbol,
-      trades: summaryRowData.detailData,
-    });
+    setDetailData({ symbol: summaryRowData.symbol, trades: summaryRowData.detailData });
     setIsDetailModalOpen(true);
   }, []);
+  const handleCloseDetailModal = useCallback(() => setIsDetailModalOpen(false), []);
 
-  const handleCloseDetailModal = useCallback(
-    () => setIsDetailModalOpen(false),
-    []
-  );
-
-  const handleEditAction = useCallback((action) => {
-    setEditingAction(action);
-    setIsEditActionModalOpen(true);
+const handleEditAction = useCallback((action) => {
+    setIsDetailModalOpen(false); 
+    
+    setTimeout(() => { 
+      setEditingAction(action);
+      setIsEditActionModalOpen(true);
+    }, 150);
   }, []);
-
   const handleCloseEditActionModal = useCallback(() => {
     setIsEditActionModalOpen(false);
     setEditingAction(null);
-    fetchActions();
     handleCloseDetailModal();
-  }, [fetchActions, handleCloseDetailModal]);
+  }, [handleCloseDetailModal]);
 
-  const handleDeleteAction = useCallback(
-    async (id) => {
-      const confirmed = await showConfirmAlert(
-        "حذف رویداد",
-        "آیا از حذف این رویداد مطمئن هستید؟ این عمل غیرقابل بازگشت است."
-      );
-      if (confirmed) {
-        const { deleteAction } = useStockTradesStore.getState();
-        const success = await deleteAction(id);
-        if (success) {
-          fetchActions();
-          handleCloseDetailModal();
-        }
-      }
-    },
-    [fetchActions, handleCloseDetailModal]
-  );
+  const handleDeleteAction = useCallback(async (id) => {
+    const confirmed = await showConfirmAlert("حذف رویداد", "آیا از حذف این رویداد مطمئن هستید؟ این عمل غیرقابل بازگشت است.");
+    if (confirmed) {
+      const success = await deleteAction(id);
+      if (success) handleCloseDetailModal();
+    }
+  }, [deleteAction, handleCloseDetailModal]);
 
-  const portfolioMetrics = useMemo(() => {
-    const allPositions = [...openPositions, ...closedPositions];
-    const totalRealizedReturn = allPositions.reduce(
-      (sum, pos) =>
-        sum +
-        (pos.totalRealizedPL || 0) +
-        (pos.totalDividend || 0) +
-        (pos.totalRightsSellRevenue || 0),
-      0
-    );
-    const totalUnrealizedPL = openPositions.reduce(
-      (sum, pos) => sum + (pos.unrealizedPL || 0),
-      0
-    );
-    const totalCurrentValue = openPositions.reduce(
-      (sum, pos) => sum + (pos.currentValue || 0),
-      0
-    );
-    return {
-      totalRealizedReturn,
-      totalUnrealizedPL,
-      totalCurrentValue,
-    };
-  }, [openPositions, closedPositions]);
+  const masterColumnDefs = useMemo(() => getMasterColumnDefs(handleOpenDetailModal), [handleOpenDetailModal]);
+  const detailColumnDefs = useMemo(() => getDetailColumnDefs(handleEditAction, handleDeleteAction), [handleEditAction, handleDeleteAction]);
 
-  const masterColumnDefs = useMemo(
-    () => getMasterColumnDefs(handleOpenDetailModal),
-    [handleOpenDetailModal]
-  );
-
-  const detailColumnDefs = useMemo(
-    () => getDetailColumnDefs(handleEditAction, handleDeleteAction),
-    [handleEditAction, handleDeleteAction]
-  );
-
-  const tabButtonClasses =
-    "px-4 py-2 text-sm font-medium transition-colors border-b-2";
+  const tabButtonClasses = "px-4 py-2 text-sm font-medium transition-colors border-b-2";
   const activeTabClasses = "border-primary-500 text-primary-600";
-  const inactiveTabClasses =
-    "border-transparent text-content-500 hover:text-content-700";
+  const inactiveTabClasses = "border-transparent text-content-500 hover:text-content-700";
+
+  if (!portfolioMetrics) {
+    return <div>در حال بارگذاری...</div>;
+  }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-screen-2xl mx-auto">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-         {/* Card components */}
-         <Card
-            color="primary"
-            title="ارزش لحظه‌ای پورتفوی"
-            amount={portfolioMetrics.totalCurrentValue}
-            icon={<Wallet size={24} className="text-primary-600" />}
-          />
-          <Card
-            color={portfolioMetrics.totalUnrealizedPL >= 0 ? "success" : "danger"}
-            title="سود/زیان محقق نشده"
-            amount={portfolioMetrics.totalUnrealizedPL}
-            icon={
-              portfolioMetrics.totalUnrealizedPL >= 0 ? (
-                <TrendingUp size={24} className="text-success-600" />
-              ) : (
-                <TrendingDown size={24} className="text-danger-600" />
-              )
-            }
-          />
-          <Card
-            color={
-              portfolioMetrics.totalRealizedReturn >= 0 ? "success" : "danger"
-            }
-            title="بازده محقق شده (فروش + مجمع + حق تقدم)"
-            amount={portfolioMetrics.totalRealizedReturn}
-            icon={
-              <DollarSign
-                size={24}
-                className={
-                  portfolioMetrics.totalRealizedReturn >= 0
-                    ? "text-success-600"
-                    : "text-danger-600"
-                }
-              />
-            }
-          />
-      </div>
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-content-800">
-          پورتفوی جامع سهام
-        </h1>
-        <Button
-          variant="primary"
-          onClick={handleOpenAddModal}
-          icon={<PlusCircle size={20} />}>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <h1 className="text-2xl font-bold text-content-800">پورتفوی جامع سهام</h1>
+        <Button variant="primary" onClick={handleOpenAddModal} icon={<PlusCircle size={20} />}>
           ثبت رویداد جدید
         </Button>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <Card title="ارزش لحظه‌ای پورتفوی" amount={portfolioMetrics.totalCurrentValue} color="primary" icon={<Wallet size={24} className="text-primary-600" />} />
+        <Card title="سود/زیان محقق نشده" amount={portfolioMetrics.totalUnrealizedPL} color={portfolioMetrics.totalUnrealizedPL >= 0 ? "success" : "danger"} icon={portfolioMetrics.totalUnrealizedPL >= 0 ? <TrendingUp size={24} className="text-success-600" /> : <TrendingDown size={24} className="text-danger-600" />} />
+        <Card title="بازده محقق شده (فروش و سود نقدی)" amount={portfolioMetrics.totalRealizedReturn} color={portfolioMetrics.totalRealizedReturn >= 0 ? "success" : "danger"} icon={<DollarSign size={24} className={portfolioMetrics.totalRealizedReturn >= 0 ? "text-success-600" : "text-danger-600"} />} />
+      </div>
+
       <div className="border-b border-content-200">
-        <nav
-          className="-mb-px flex space-x-4 rtl:space-x-reverse"
-          aria-label="Tabs">
-          <button
-            onClick={() => setActiveTab("open")}
-            className={cn(
-              tabButtonClasses,
-              activeTab === "open" ? activeTabClasses : inactiveTabClasses
-            )}>
-            پوزیشن‌های باز ({openPositions.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("closed")}
-            className={cn(
-              tabButtonClasses,
-              activeTab === "closed" ? activeTabClasses : inactiveTabClasses
-            )}>
-            تاریخچه ({closedPositions.length})
-          </button>
+        <nav className="-mb-px flex space-x-4 rtl:space-x-reverse" aria-label="Tabs">
+          <button onClick={() => setActiveTab("open")} className={`${tabButtonClasses} ${activeTab === 'open' ? activeTabClasses : inactiveTabClasses}`}>پوزیشن‌های باز ({openPositions.length})</button>
+          <button onClick={() => setActiveTab("closed")} className={`${tabButtonClasses} ${activeTab === 'closed' ? activeTabClasses : inactiveTabClasses}`}>تاریخچه ({closedPositions.length})</button>
         </nav>
       </div>
+
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <AgGridTable
           rowData={activeTab === "open" ? openPositions : closedPositions}
           columnDefs={masterColumnDefs}
-          domLayout="autoHeight"
-          isLoading={isLoading}
+          isLoading={isActionsLoading}
         />
       </div>
-      <Modal
-        isOpen={isAddModalOpen}
-        onClose={handleCloseAddModal}
-         isLoading={isLoading} 
-        title="ثبت رویداد جدید پورتفوی">
+
+      <Modal isOpen={isAddModalOpen || isEditActionModalOpen} onClose={isAddModalOpen ? handleCloseAddModal : handleCloseEditActionModal} title={isEditActionModalOpen ? "ویرایش رویداد" : "ثبت رویداد جدید"}>
         <AddActionModal
-          onSubmitSuccess={handleCloseAddModal}
-          portfolioPositions={openPositions}
-          isEditMode={false}
-          initialData={null}
-        />
-      </Modal>
-      <Modal
-        isOpen={isDetailModalOpen}
-        onClose={handleCloseDetailModal}
-        title={`تاریخچه رویدادهای نماد: ${detailData.symbol}`}>
-        <div className="max-h-[60vh] overflow-y-auto">
-          <AgGridTable
-            rowData={detailData.trades}
-            columnDefs={detailColumnDefs}
-            domLayout="autoHeight"
-          />
-        </div>
-      </Modal>
-      <Modal
-        isOpen={isEditActionModalOpen}
-        onClose={handleCloseEditActionModal}
-        title={`ویرایش رویداد: ${editingAction?.symbol} (${
-          editingAction?.type === "buy" ? "خرید" : editingAction?.type
-        })`}>
-        <AddActionModal
-          onSubmitSuccess={handleCloseEditActionModal}
+          onSubmitSuccess={isAddModalOpen ? handleCloseAddModal : handleCloseEditActionModal}
           initialData={editingAction}
-          isEditMode={true}
+          isEditMode={isEditActionModalOpen}
           portfolioPositions={openPositions}
         />
+      </Modal>
+      
+      <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetailModal} title={`تاریخچه رویدادهای نماد: ${detailData.symbol}`} className="max-w-4xl">
+        <div className="max-h-[70vh] overflow-y-auto">
+          <AgGridTable rowData={detailData.trades} columnDefs={detailColumnDefs} domLayout="autoHeight" />
+        </div>
       </Modal>
     </div>
   );
