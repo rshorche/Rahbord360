@@ -1,5 +1,5 @@
 import { useFormContext, Controller } from "react-hook-form";
-import DatePicker, { DateObject } from "react-multi-date-picker";
+import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import "react-multi-date-picker/styles/layouts/mobile.css";
@@ -38,16 +38,12 @@ const DateInput = ({
         name={name}
         rules={rules}
         render={({ field: { onChange, onBlur, value } }) => {
-          // تبدیل مقدار به شیء DateObject برای نمایش در تقویم
-          const dateValue = value ? new DateObject({ date: value }) : null;
-
           return (
             <DatePicker
               id={name}
-              value={dateValue}
+              value={value}
               onBlur={onBlur}
               onClose={() => onBlur()}
-              // onChange یک شیء DateObject برمی‌گرداند، ما آن را به Date استاندارد جاوااسکریپت تبدیل می‌کنیم
               onChange={(dateObject) => {
                 onChange(dateObject ? dateObject.toDate() : null);
               }}
@@ -61,6 +57,8 @@ const DateInput = ({
               )}
               containerClassName="w-full h-full"
               arrow={false}
+              // --- تغییر اصلی اینجاست ---
+              portal 
               {...props}
             />
           );
