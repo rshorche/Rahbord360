@@ -11,13 +11,14 @@ export const showSuccessToast = (text) => {
   });
 };
 
-export const showErrorAlert = (
-  text = "مشکلی در ذخیره‌سازی اطلاعات رخ داد."
-) => {
+// --- این تابع اصلاح شده است ---
+export const showErrorAlert = (title, htmlContent) => {
+  const defaultText = "مشکلی در ذخیره‌سازی اطلاعات رخ داد.";
   Swal.fire({
     icon: "error",
-    title: "خطا!",
-    text: text,
+    title: title || "خطا!",
+    // به جای text از html استفاده می‌کنیم تا بتوانیم کد HTML نمایش دهیم
+    html: htmlContent || defaultText, 
   });
 };
 
@@ -29,7 +30,7 @@ export const showConfirmAlert = async (title, text) => {
     showCancelButton: true,
     confirmButtonColor: "#d33",
     cancelButtonColor: "#6b7280",
-    confirmButtonText: "بله، حذف کن!",
+    confirmButtonText: "بله، مطمئنم!",
     cancelButtonText: "لغو",
   });
   return result.isConfirmed;
