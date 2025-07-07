@@ -1,20 +1,16 @@
-import clsx from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs) {
-  return twMerge(clsx(inputs));
-}
-
-export const formatCurrency = (value) => {
+export const formatCurrency = (value, precision = 2) => {
   if (value == null || isNaN(Number(value))) return "-";
-  return Number(value).toLocaleString("fa-IR");
+  const num = Number(value);
+  return num.toLocaleString("fa-IR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: precision,
+  });
 };
-
-export const formatDisplayNumber = (value, precision = 0, suffix = "") => {
+export const formatDisplayNumber = (value, precision = 2, suffix = "") => {
   if (value == null || isNaN(Number(value))) return "-";
   const num = Number(value);
   const formatted = num.toLocaleString("fa-IR", {
-    minimumFractionDigits: precision,
+    minimumFractionDigits: 0,
     maximumFractionDigits: precision,
   });
   return `${formatted}${suffix}`;
