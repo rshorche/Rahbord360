@@ -22,7 +22,11 @@ const TextInput = ({
   const error = errors[name]?.message;
 
   const isPassword = type === "password";
-  const currentInputType = isPassword && showPassword ? "text" : type;
+  // --- 1. بخش کلیدی اصلاح شده ---
+  // اگر نوع ورودی "number" بود، ما از نظر فنی از "text" استفاده می‌کنیم تا کنترل را در دست بگیریم،
+  // اما با inputMode به کیبوردها می‌گوییم که عددی باشند.
+  const isNumberInput = type === "number";
+  const finalInputType = isPassword && showPassword ? "text" : isNumberInput ? "text" : type;
 
   return (
     <FormFieldWrapper
@@ -34,9 +38,12 @@ const TextInput = ({
         <input
           {...register(name)}
           id={name}
-          type={currentInputType}
+          type={finalInputType}
+          // --- 2. افزودن inputMode برای تجربه کاربری بهتر در موبایل ---
+          inputMode={isNumberInput ? "decimal" : props.inputMode}
           className={cn(
             "w-full h-12 bg-transparent px-3 text-sm text-content-800 placeholder:text-content-400 outline-none",
+            "text-left direction-ltr", // برای اینکه اعداد و نقطه به درستی نمایش داده شوند
             isPassword && "pl-10",
             inputClassName
           )}
