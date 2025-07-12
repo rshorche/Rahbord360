@@ -10,7 +10,7 @@ import SelectInput from "../../../../shared/components/ui/forms/SelectInput";
 
 export default function AddDividendForm({
   onSubmitSuccess,
-  portfolioSymbols = [], // لیستی از نمادهای موجود در پورتفوی کاربر
+  portfolioSymbols = [],
   initialData,
   isEditMode = false,
 }) {
@@ -24,7 +24,7 @@ export default function AddDividendForm({
           date: new Date(),
           symbol: "",
           amount: "",
-          type: "dividend", // نوع رویداد به صورت ثابت تعریف می‌شود
+          type: "dividend",
         },
   });
 
@@ -43,16 +43,19 @@ export default function AddDividendForm({
   }, [initialData, isEditMode, reset]);
 
   const handleFormSubmit = async (formData) => {
+    const actionToSubmit = isEditMode
+      ? { ...initialData, ...formData }
+      : formData;
+
     const success = isEditMode
-      ? await updateAction(initialData.id, formData)
-      : await addAction(formData);
+      ? await updateAction(initialData.id, actionToSubmit)
+      : await addAction(actionToSubmit);
 
     if (success && onSubmitSuccess) {
       onSubmitSuccess();
     }
   };
   
-  // تبدیل لیست رشته‌ای نمادها به فرمت مورد نیاز SelectInput
   const symbolOptions = portfolioSymbols.map((symbol) => ({
     value: symbol,
     label: symbol,
@@ -71,6 +74,7 @@ export default function AddDividendForm({
             label="انتخاب نماد"
             options={symbolOptions}
             placeholder="یک نماد انتخاب کنید"
+            disabled={isEditMode}
           />
         </div>
         <TextInput

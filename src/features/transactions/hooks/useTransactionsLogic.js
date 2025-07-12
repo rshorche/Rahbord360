@@ -3,7 +3,6 @@ import useTransactionStore from "../store/useTransactionStore";
 import { showConfirmAlert } from "../../../shared/utils/notifications";
 
 export const useTransactionsLogic = () => {
-  // --- State Management ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
 
@@ -16,32 +15,23 @@ export const useTransactionsLogic = () => {
     deleteTransaction,
   } = useTransactionStore();
 
-  // --- Data Fetching ---
   useEffect(() => {
-    if (transactions.length === 0) {
-      fetchTransactions();
-    }
-  }, [fetchTransactions, transactions.length]);
+    fetchTransactions();
+  }, [fetchTransactions]);
 
-  // --- Memoized Calculations ---
   const { totalDeposit, totalWithdraw, netValue } = useMemo(() => {
-    let deposit = 0;
-    let withdraw = 0;
-    transactions.forEach((t) => {
+    return transactions.reduce((acc, t) => {
+      const amount = Number(t.amount) || 0;
       if (t.type === "deposit") {
-        deposit += Number(t.amount);
+        acc.totalDeposit += amount;
       } else {
-        withdraw += Number(t.amount);
+        acc.totalWithdraw += amount;
       }
-    });
-    return {
-      totalDeposit: deposit,
-      totalWithdraw: withdraw,
-      netValue: deposit - withdraw,
-    };
+      acc.netValue = acc.totalDeposit - acc.totalWithdraw;
+      return acc;
+    }, { totalDeposit: 0, totalWithdraw: 0, netValue: 0 });
   }, [transactions]);
 
-  // --- Event Handlers ---
   const handleOpenModal = useCallback((transaction = null) => {
     setEditingTransaction(transaction);
     setIsModalOpen(true);
@@ -52,36 +42,28 @@ export const useTransactionsLogic = () => {
     setEditingTransaction(null);
   }, []);
 
-  const handleDelete = useCallback(
-    async (id) => {
-      const confirmed = await showConfirmAlert(
-        "آیا از حذف تراکنش مطمئن هستید؟",
-        "این عملیات غیرقابل بازگشت است."
-      );
-      if (confirmed) {
-        await deleteTransaction(id);
-      }
-    },
-    [deleteTransaction]
-  );
+  const handleDelete = useCallback(async (id) => {
+    const confirmed = await showConfirmAlert(
+      "آیا از حذف تراکنش مطمئن هستید؟",
+      "این عملیات غیرقابل بازگشت است."
+    );
+    if (confirmed) {
+      await deleteTransaction(id);
+    }
+  }, [deleteTransaction]);
 
-  const handleSubmitForm = useCallback(
-    async (formData) => {
-      const isEdit = !!editingTransaction;
-      let success = false;
-      if (isEdit) {
-        success = await updateTransaction(editingTransaction.id, formData);
-      } else {
-        success = await addTransaction(formData);
-      }
-      if (success) {
-        handleCloseModal();
-      }
-    },
-    [editingTransaction, addTransaction, updateTransaction, handleCloseModal]
-  );
+  const handleSubmitForm = useCallback(async (formData) => {
+    const isEdit = !!editingTransaction;
+    const action = isEdit ? updateTransaction : addTransaction;
+    const payload = isEdit ? [editingTransaction.id, formData] : [formData];
+    
+    const success = await action(...payload);
+    
+    if (success) {
+      handleCloseModal();
+    }
+  }, [editingTransaction, addTransaction, updateTransaction, handleCloseModal]);
 
-  // مقادیری که کامپوننت UI به آنها نیاز دارد را برمی‌گردانیم
   return {
     transactions,
     isLoading,

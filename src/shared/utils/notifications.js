@@ -11,13 +11,11 @@ export const showSuccessToast = (text) => {
   });
 };
 
-// --- این تابع اصلاح شده است ---
 export const showErrorAlert = (title, htmlContent) => {
   const defaultText = "مشکلی در ذخیره‌سازی اطلاعات رخ داد.";
   Swal.fire({
     icon: "error",
     title: title || "خطا!",
-    // به جای text از html استفاده می‌کنیم تا بتوانیم کد HTML نمایش دهیم
     html: htmlContent || defaultText, 
   });
 };

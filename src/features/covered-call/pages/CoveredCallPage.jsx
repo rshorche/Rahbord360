@@ -6,7 +6,7 @@ import Modal from "../../../shared/components/ui/Modal";
 import Button from "../../../shared/components/ui/Button";
 import CoveredCallForm from "../components/CoveredCallForm";
 import ManageCoveredCallForm from "../components/ManageCoveredCallForm";
-import { PlusCircle, Edit, Trash2, CheckCircle } from "lucide-react";
+import { PlusCircle, Edit, Trash2, CheckCircle, RotateCcw } from "lucide-react";
 import { cn } from "../../../shared/utils/cn";
 
 export default function CoveredCallPage() {
@@ -14,9 +14,9 @@ export default function CoveredCallPage() {
     isLoading,
     activeTab,
     setActiveTab,
-    openPositions, // این متغیر برای جدول کاورد کال است
+    openPositions,
     historyPositions,
-    portfolioOpenPositions, // --- 1. دریافت لیست پوزیشن‌های پورتفولیو ---
+    portfolioOpenPositions,
     modal,
     openModal,
     closeModal,
@@ -24,6 +24,7 @@ export default function CoveredCallPage() {
     handleEditSubmit,
     handleManageSubmit,
     handleDeletePosition,
+    handleReopenPosition,
   } = useCoveredCallLogic();
 
   const columnDefs = useMemo(
@@ -76,8 +77,7 @@ export default function CoveredCallPage() {
         />
       </div>
 
-      <Modal isOpen={modal.type === "add"} onClose={closeModal} title="ثبت معامله جدید کاورد کال">
-        {/* --- 2. پاس دادن لیست صحیح به فرم --- */}
+      <Modal isOpen={modal.type === "add"} onClose={closeModal} title="ثبت معامله جدید کاورد کال" isLoading={isLoading}>
         <CoveredCallForm
           onSubmit={handleAddSubmit}
           isLoading={isLoading}
@@ -85,8 +85,7 @@ export default function CoveredCallPage() {
         />
       </Modal>
 
-      <Modal isOpen={modal.type === "edit"} onClose={closeModal} title={`ویرایش معامله: ${modal.data?.option_symbol}`}>
-        {/* --- 2. پاس دادن لیست صحیح به فرم --- */}
+      <Modal isOpen={modal.type === "edit"} onClose={closeModal} title={`ویرایش معامله: ${modal.data?.option_symbol}`} isLoading={isLoading}>
         <CoveredCallForm
           onSubmit={handleEditSubmit}
           isLoading={isLoading}
@@ -96,7 +95,7 @@ export default function CoveredCallPage() {
         />
       </Modal>
 
-      <Modal isOpen={modal.type === "manage"} onClose={closeModal} title={`مدیریت پوزیشن: ${modal.data?.option_symbol}`}>
+      <Modal isOpen={modal.type === "manage"} onClose={closeModal} title={`مدیریت پوزیشن: ${modal.data?.option_symbol}`} isLoading={isLoading}>
         <ManageCoveredCallForm
           position={modal.data}
           onSubmit={handleManageSubmit}
@@ -106,7 +105,7 @@ export default function CoveredCallPage() {
 
       <Modal isOpen={modal.type === "actions"} onClose={closeModal} title={`عملیات برای: ${modal.data?.option_symbol}`}>
         <div className="flex flex-col space-y-3 p-2">
-          {modal.data?.status === "OPEN" && (
+          {modal.data?.status === "OPEN" ? (
             <>
               <Button
                 variant="outline"
@@ -123,6 +122,14 @@ export default function CoveredCallPage() {
                 ویرایش معامله اولیه
               </Button>
             </>
+          ) : (
+             <Button
+                variant="outline"
+                onClick={() => handleReopenPosition(modal.data)}
+                icon={<RotateCcw size={18} />}
+              >
+                اصلاح / بازگشایی پوزیشن
+              </Button>
           )}
           <Button
             variant="danger-light"

@@ -1,5 +1,3 @@
-// src/features/covered-call/utils/coveredCallCalculations.js
-
 const MS_IN_DAY = 1000 * 60 * 60 * 24;
 const DAYS_IN_YEAR = 365;
 
@@ -55,19 +53,17 @@ export const calculatePositionMetrics = (position, currentStockPrice = 0) => {
       position.status, netPremium, totalRequiredShares, numStrikePrice, 
       numUnderlyingCostBasis, numClosingPrice, numClosingCommission
     );
-    // در تاریخچه، سود کل همان سود قطعی است
     total_strategy_pl = realized_pl;
   }
   
-  const daysToExpiration = position.status === 'OPEN' ? _getDaysDifference(expirationDate, today) : "پایان یافته";
+  const daysToExpiration = position.status === 'OPEN' ? _getDaysDifference(expirationDate, today) : 0;
   const breakEvenPrice = totalRequiredShares > 0 ? numUnderlyingCostBasis - (netPremium / totalRequiredShares) : 0;
   const maxProfit = (numStrikePrice - numUnderlyingCostBasis) * totalRequiredShares + netPremium;
   const returnIfAssignedPercent = capitalInvolved > 0 ? (maxProfit / capitalInvolved) * 100 : 0;
   
   const tradeDuration = Math.max(1, _getDaysDifference(expirationDate, tradeDate));
-  const annualizedReturnPercent = (returnIfAssignedPercent / tradeDuration) * DAYS_IN_YEAR;
+  const annualizedReturnPercent = daysToExpiration > 0 ? (returnIfAssignedPercent / tradeDuration) * DAYS_IN_YEAR : 0;
   
-  // --- محاسبات اصلاح شده و اضافه شده ---
   const distanceToStrikePercent = currentStockPrice > 0 && numStrikePrice > 0 ? ((currentStockPrice - numStrikePrice) / numStrikePrice) * 100 : 0;
   const distanceToBePercent = currentStockPrice > 0 && breakEvenPrice > 0 ? ((currentStockPrice - breakEvenPrice) / breakEvenPrice) * 100 : 0;
   const realizedReturnPercent = capitalInvolved > 0 ? (realized_pl / capitalInvolved) * 100 : 0;
@@ -85,9 +81,9 @@ export const calculatePositionMetrics = (position, currentStockPrice = 0) => {
     return_if_assigned_percent: returnIfAssignedPercent,
     realized_pl: realized_pl,
     realized_return_percent: realizedReturnPercent,
-    distance_to_strike_percent: distanceToStrikePercent, // فیلد اضافه شده
-    distance_to_be_percent: distanceToBePercent,       // فیلد اضافه شده
-    total_strategy_pl: total_strategy_pl,               // فیلد اصلاح شده
+    distance_to_strike_percent: distanceToStrikePercent,
+    distance_to_be_percent: distanceToBePercent,
+    total_strategy_pl: total_strategy_pl,
     holding_period_days: Math.round(holding_period_days),
     max_profit: maxProfit,
   };

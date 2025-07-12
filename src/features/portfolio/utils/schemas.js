@@ -31,11 +31,14 @@ export const bonusSchema = baseActionSchema.shape({
 });
 
 export const rightsIssueSchema = baseActionSchema.shape({
+    date: yup.date().typeError("لطفا یک تاریخ معتبر انتخاب کنید.").required("تاریخ الزامی است"),
+    symbol: yup.string().trim().required("انتخاب نماد الزامی است."),
     outcome: yup.string().oneOf(["exercise", "sell"]).required("انتخاب نتیجه الزامی است."),
-    quantity: yup.number().transform(emptyStringToUndefined).when("outcome", { is: "exercise", then: (schema) => schema.typeError("تعداد باید عدد باشد.").positive("تعداد باید بزرگتر از صفر باشد.").required("تعداد الزامی است."), otherwise: (schema) => schema.optional(), }),
-    price: yup.number().transform(emptyStringToUndefined).when("outcome", { is: "exercise", then: (schema) => schema.typeError("قیمت باید عدد باشد.").positive("قیمت باید مثبت باشد.").required("قیمت الزامی است."), otherwise: (schema) => schema.optional(), }),
-    commission: yup.number().transform(emptyStringToUndefined).when("outcome", { is: "exercise", then: (schema) => schema.typeError("کارمزد باید عدد باشد.").min(0, "کارمزد نمی‌تواند منفی باشد.").default(0), otherwise: (schema) => schema.optional(), }),
-    amount: yup.number().transform(emptyStringToUndefined).when("outcome", { is: "sell", then: (schema) => schema.typeError("مبلغ باید عدد باشد.").positive("مبلغ باید مثبت باشد.").required("مبلغ فروش الزامی است."), otherwise: (schema) => schema.optional(), }),
+    quantity: yup.number().transform(emptyStringToUndefined).when("outcome", { is: "exercise", then: (schema) => schema.typeError("تعداد باید عدد باشد.").positive("تعداد باید بزرگتر از صفر باشد.").required("تعداد الزامی است."), otherwise: (schema) => schema.optional().nullable(), }),
+    price: yup.number().transform(emptyStringToUndefined).when("outcome", { is: "exercise", then: (schema) => schema.typeError("قیمت باید عدد باشد.").positive("قیمت باید مثبت باشد.").required("قیمت الزامی است."), otherwise: (schema) => schema.optional().nullable(), }),
+    commission: yup.number().transform(emptyStringToUndefined).when("outcome", { is: "exercise", then: (schema) => schema.typeError("کارمزد باید عدد باشد.").min(0, "کارمزد نمی‌تواند منفی باشد.").default(0), otherwise: (schema) => schema.optional().nullable(), }),
+    amount: yup.number().transform(emptyStringToUndefined).when("outcome", { is: "sell", then: (schema) => schema.typeError("مبلغ باید عدد باشد.").positive("مبلغ باید مثبت باشد.").required("مبلغ فروش الزامی است."), otherwise: (schema) => schema.optional().nullable(), }),
+    notes: yup.string().trim().optional(),
 });
 
 export const revaluationSchema = baseActionSchema.shape({
@@ -46,6 +49,6 @@ export const revaluationSchema = baseActionSchema.shape({
 export const premiumSchema = baseActionSchema.shape({
     type: yup.string().oneOf(["premium"]).required(),
     premium_type: yup.string().oneOf(["cash_payment", "bonus_shares"]).required("انتخاب نوع صرف سهام الزامی است."),
-    amount: yup.number().transform(emptyStringToUndefined).when("premium_type", { is: "cash_payment", then: (schema) => schema.typeError("مبلغ باید عدد باشد.").positive("مبلغ باید مثبت باشد.").required("مبلغ دریافتی الزامی است."), otherwise: (schema) => schema.optional(), }),
-    quantity: yup.number().transform(emptyStringToUndefined).when("premium_type", { is: "bonus_shares", then: (schema) => schema.typeError("تعداد باید عدد باشد.").positive("تعداد باید بزرگتر از صفر باشد.").required("تعداد سهام جایزه الزامی است."), otherwise: (schema) => schema.optional(), }),
+    amount: yup.number().transform(emptyStringToUndefined).when("premium_type", { is: "cash_payment", then: (schema) => schema.typeError("مبلغ باید عدد باشد.").positive("مبلغ باید مثبت باشد.").required("مبلغ دریافتی الزامی است."), otherwise: (schema) => schema.optional().nullable(), }),
+    quantity: yup.number().transform(emptyStringToUndefined).when("premium_type", { is: "bonus_shares", then: (schema) => schema.typeError("تعداد باید عدد باشد.").positive("تعداد باید بزرگتر از صفر باشد.").required("تعداد سهام جایزه الزامی است."), otherwise: (schema) => schema.optional().nullable(), }),
 });

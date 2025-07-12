@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import { cn } from "../../utils/cn";
-import LoadingSpinner from "./LoadingSpinner"; // 1. ایمپورت اسپینر
+import LoadingSpinner from "./LoadingSpinner";
 
 const Modal = ({
   isOpen,
@@ -9,7 +9,7 @@ const Modal = ({
   title,
   children,
   className,
-  isLoading = false, // 2. پراپرتی جدید برای کنترل لودینگ
+  isLoading = false,
 }) => {
   useEffect(() => {
     if (!isOpen) return;
@@ -34,7 +34,6 @@ const Modal = ({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="modal-title"
     >
       <div
         className={cn(
@@ -44,29 +43,27 @@ const Modal = ({
         )}
         onClick={(e) => e.stopPropagation()}
         style={{ maxHeight: "90vh" }}
-        role="document"
       >
-        {/* 3. افزودن پوشش لودینگ */}
         {isLoading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-xl">
             <LoadingSpinner text="در حال پردازش..." />
           </div>
         )}
 
-        <div className="flex-shrink-0 flex justify-between items-center p-4 sm:p-5 border-b border-content-200">
-          <h3 id="modal-title" className="text-lg font-semibold text-content-main">
+        <div className="flex-shrink-0 flex justify-between items-center p-5 border-b border-content-200">
+          <h3 className="text-lg font-semibold text-content-800">
             {title}
           </h3>
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-content-500 hover:bg-content-100 hover:text-content-800 transition-colors"
+            className="p-1 rounded-full text-content-500 hover:bg-content-100"
             aria-label="بستن"
           >
             <X size={24} />
           </button>
         </div>
 
-        <div className="overflow-y-auto p-4 sm:p-6 flex-grow">{children}</div>
+        <div className="overflow-y-auto p-6 flex-grow">{children}</div>
       </div>
     </div>
   );

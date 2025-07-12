@@ -54,7 +54,7 @@ export default function AddActionModal({
         case 'premium':
           return <AddPremiumForm {...formProps} />;
         default:
-          return <p>نوع رویداد برای ویرایش معتبر نیست.</p>;
+          return null;
       }
     }
 
@@ -97,7 +97,7 @@ export default function AddActionModal({
     <div className="space-y-4">
       <div className="border-b border-content-200">
         <nav className="-mb-px flex space-x-4 rtl:space-x-reverse" aria-label="Tabs">
-          {!isEditMode ? (
+          {!isEditMode && (
             <>
               <button onClick={() => setMainTab("main_trades")} className={cn(tabButtonClasses, mainTab === "main_trades" ? activeTabClasses : inactiveTabClasses)}>
                 معاملات اصلی
@@ -106,10 +106,6 @@ export default function AddActionModal({
                 افزایش سرمایه و سود
               </button>
             </>
-          ) : (
-            <span className={cn(tabButtonClasses, activeTabClasses, "cursor-default")}>
-              ویرایش رویداد
-            </span>
           )}
         </nav>
       </div>

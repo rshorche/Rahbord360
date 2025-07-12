@@ -10,7 +10,6 @@ const useCoveredCallStore = create((set, get) => ({
   error: null,
 
   fetchPositions: async () => {
-    if (get().positions.length > 0) return get().positions;
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
@@ -20,157 +19,180 @@ const useCoveredCallStore = create((set, get) => ({
 
       if (error) throw error;
       set({ positions: data || [], isLoading: false });
-      return data || [];
     } catch (error) {
-      console.error("Error fetching covered call positions:", error.message);
       showErrorAlert("خطا در دریافت اطلاعات کاورد کال.");
       set({ error: error.message, isLoading: false });
-      return [];
     }
   },
 
-  addPosition: async (newPositionData) => {
-    // منطق اعتبارسنجی ...
-    const requiredShares = (Number(newPositionData.contracts_count) || 0) * (Number(newPositionData.shares_per_contract) || 1000);
-    const sharesAlreadyCovering = get().positions
-      .filter(p => p.underlying_symbol === newPositionData.underlying_symbol && p.status === 'OPEN')
-      .reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
-    const trulyAvailableShares = newPositionData.availableShares - sharesAlreadyCovering;
-
-    if (requiredShares > trulyAvailableShares) {
-        showErrorAlert("خطا: سهام آزاد کافی نیست", `شما برای پوشش این معامله به ${requiredShares.toLocaleString()} سهم نیاز دارید، اما فقط ${Math.floor(trulyAvailableShares).toLocaleString()} سهم آزاد در پورتفولیوی خود دارید.`);
-        return false;
-    }
-
+  addPosition: async (formData) => {
     set({ isLoading: true });
     try {
       const payload = {
-        underlying_symbol: newPositionData.underlying_symbol,
-        option_symbol: newPositionData.option_symbol,
-        trade_date: new DateObject(newPositionData.trade_date).format("YYYY-MM-DD"),
-        expiration_date: new DateObject(newPositionData.expiration_date).format("YYYY-MM-DD"),
-        strike_price: Number(newPositionData.strike_price),
-        contracts_count: Number(newPositionData.contracts_count),
-        shares_per_contract: Number(newPositionData.shares_per_contract),
-        premium_per_share: Number(newPositionData.premium_per_share),
-        commission: Number(newPositionData.commission),
-        underlying_cost_basis: Number(newPositionData.underlying_cost_basis),
-        notes: newPositionData.notes,
+        underlying_symbol: formData.underlying_symbol,
+        option_symbol: formData.option_symbol,
+        trade_date: new DateObject(formData.trade_date).format("YYYY-MM-DD"),
+        expiration_date: new DateObject(formData.expiration_date).format("YYYY-MM-DD"),
+        strike_price: Number(formData.strike_price),
+        contracts_count: Number(formData.contracts_count),
+        shares_per_contract: Number(formData.shares_per_contract),
+        premium_per_share: Number(formData.premium_per_share),
+        commission: Number(formData.commission) || 0,
+        underlying_cost_basis: Number(formData.underlying_cost_basis),
+        notes: formData.notes,
       };
-
-      const { data, error } = await supabase.from("covered_calls").insert(payload).select().single();
+      const { error } = await supabase.from("covered_calls").insert(payload);
       if (error) throw error;
 
-      set((state) => ({
-        positions: [data, ...state.positions].sort((a, b) => new Date(b.trade_date) - new Date(a.date)),
-        isLoading: false,
-      }));
+      await get().fetchPositions();
       showSuccessToast("پوزیشن کاورد کال با موفقیت ثبت شد.");
       return true;
     } catch (error) {
-      console.error("Error adding covered call position:", error.message);
-      showErrorAlert("خطا در ثبت پوزیشن کاورد کال.");
+      showErrorAlert("خطا در ثبت پوزیشن کاورد کال.", error.message);
       set({ isLoading: false, error: error.message });
       return false;
     }
   },
 
-  updatePosition: async (id, updatedData) => {
-    // منطق اعتبارسنجی ...
-    const { contracts_count, shares_per_contract, underlying_symbol, availableShares } = updatedData;
-    const requiredShares = (Number(contracts_count) || 0) * (Number(shares_per_contract) || 1000);
-    
-    const sharesCoveringOtherPositions = get().positions
-      .filter(p => p.underlying_symbol === underlying_symbol && p.status === 'OPEN' && p.id !== id)
-      .reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
-      
-    const trulyAvailableShares = availableShares - sharesCoveringOtherPositions;
-
-    if (requiredShares > trulyAvailableShares) {
-      showErrorAlert("خطا: سهام آزاد کافی نیست", `شما برای پوشش این تعداد قرارداد به ${requiredShares.toLocaleString()} سهم نیاز دارید، اما با احتساب دیگر معاملات باز، فقط ${Math.floor(trulyAvailableShares).toLocaleString()} سهم آزاد در پورتفولیوی خود دارید.`);
-      return false;
-    }
-
+  updatePosition: async (id, formData) => {
     set({ isLoading: true });
     try {
-      // --- بخش کلیدی اصلاح شده ---
-      // تبدیل تمام مقادیر رشته‌ای به نوع داده صحیح قبل از ارسال به دیتابیس
-      const payload = {
-        underlying_symbol: updatedData.underlying_symbol,
-        option_symbol: updatedData.option_symbol,
-        trade_date: new DateObject(updatedData.trade_date).format("YYYY-MM-DD"),
-        expiration_date: new DateObject(updatedData.expiration_date).format("YYYY-MM-DD"),
-        strike_price: Number(updatedData.strike_price),
-        contracts_count: Number(updatedData.contracts_count),
-        shares_per_contract: Number(updatedData.shares_per_contract),
-        premium_per_share: Number(updatedData.premium_per_share),
-        commission: Number(updatedData.commission),
-        underlying_cost_basis: Number(updatedData.underlying_cost_basis),
-        notes: updatedData.notes,
+       const payload = {
+        underlying_symbol: formData.underlying_symbol,
+        option_symbol: formData.option_symbol,
+        trade_date: new DateObject(formData.trade_date).format("YYYY-MM-DD"),
+        expiration_date: new DateObject(formData.expiration_date).format("YYYY-MM-DD"),
+        strike_price: Number(formData.strike_price),
+        contracts_count: Number(formData.contracts_count),
+        shares_per_contract: Number(formData.shares_per_contract),
+        premium_per_share: Number(formData.premium_per_share),
+        commission: Number(formData.commission) || 0,
+        underlying_cost_basis: Number(formData.underlying_cost_basis),
+        notes: formData.notes,
       };
-      
-      const { data, error } = await supabase.from("covered_calls").update(payload).eq("id", id).select().single();
+      const { error } = await supabase.from("covered_calls").update(payload).eq("id", id);
       if (error) throw error;
-      
-      set(state => ({
-          positions: state.positions.map(p => (p.id === id ? data : p)),
-          isLoading: false
-      }));
+
+      await get().fetchPositions();
       showSuccessToast("معامله با موفقیت ویرایش شد.");
       return true;
-
     } catch(error) {
-        console.error("Error updating covered call position:", error.message);
-        showErrorAlert("خطا در ویرایش پوزیشن کاورد کال.", "مشکلی در ذخیره‌سازی اطلاعات رخ داد.");
+        showErrorAlert("خطا در ویرایش پوزیشن کاورد کال.", error.message);
         set({ isLoading: false, error: error.message });
         return false;
     }
   },
   
   resolvePosition: async (id, resolveData) => {
+    const originalPosition = get().positions.find(p => p.id === id);
+    if (!originalPosition) return false;
+
+    const contractsToClose = Number(resolveData.contracts_count) || 0;
+    const isPartialClose = contractsToClose < originalPosition.contracts_count;
+
     set({ isLoading: true });
     try {
-        const payload = {
-            p_id: id,
-            p_status: resolveData.status,
-            p_contracts_to_resolve: Number(resolveData.contracts_count),
-            p_closing_date: new DateObject(resolveData.closing_date).format("YYYY-MM-DD"),
-            p_closing_price_per_share: resolveData.closing_price_per_share ? Number(resolveData.closing_price_per_share) : null,
-            p_closing_commission: resolveData.closing_commission ? Number(resolveData.closing_commission) : null,
-        };
-        const { error } = await supabase.rpc('resolve_covered_call', payload);
-        if (error) throw error;
+      if (resolveData.status === 'ASSIGNED') {
+        const totalShares = contractsToClose * originalPosition.shares_per_contract;
+        const strikePrice = Number(originalPosition.strike_price).toLocaleString('fa-IR');
         
-        set({ positions: [] }); 
-        await get().fetchPositions();
-        if (resolveData.status === 'ASSIGNED') {
-          await useStockTradesStore.getState().fetchActions();
-        }
-        showSuccessToast("وضعیت پوزیشن با موفقیت ثبت شد.");
-        set({ isLoading: false });
-        return true;
+        const readableNote = `اعمال اختیار ${originalPosition.option_symbol}: فروش ${totalShares.toLocaleString('fa-IR')} سهم با قیمت ${strikePrice} تومان`;
+        const technicalNote = `[ref_cc:${id}]`;
+
+        const saleAction = {
+          type: 'sell',
+          symbol: originalPosition.underlying_symbol,
+          date: new DateObject(resolveData.closing_date).format("YYYY-MM-DD"),
+          quantity: totalShares,
+          price: originalPosition.strike_price,
+          commission: 0,
+          notes: `${readableNote} ||| ${technicalNote}`,
+        };
+        const saleSuccess = await useStockTradesStore.getState().addAction(saleAction, true);
+        if (!saleSuccess) throw new Error("فروش خودکار سهام با مشکل مواجه شد.");
+      }
+
+      const closingPayload = {
+        status: resolveData.status,
+        closing_date: new DateObject(resolveData.closing_date).format("YYYY-MM-DD"),
+        closing_price_per_share: resolveData.closing_price_per_share ? Number(resolveData.closing_price_per_share) : null,
+        closing_commission: resolveData.closing_commission ? Number(resolveData.closing_commission) : null,
+      };
+
+      if (isPartialClose) {
+        const newClosedPosition = { ...originalPosition, contracts_count: contractsToClose, ...closingPayload };
+        delete newClosedPosition.id;
+        delete newClosedPosition.created_at;
+
+        const { error: insertError } = await supabase.from('covered_calls').insert(newClosedPosition);
+        if (insertError) throw insertError;
+
+        const updatedOriginalPosition = { contracts_count: originalPosition.contracts_count - contractsToClose };
+        const { error: updateError } = await supabase.from('covered_calls').update(updatedOriginalPosition).eq('id', id);
+        if (updateError) throw updateError;
+
+      } else {
+        const { error: fullUpdateError } = await supabase.from('covered_calls').update(closingPayload).eq('id', id);
+        if (fullUpdateError) throw fullUpdateError;
+      }
+      
+      await get().fetchPositions();
+      if (resolveData.status === 'ASSIGNED') {
+        await useStockTradesStore.getState().fetchActions();
+      }
+      showSuccessToast("وضعیت پوزیشن با موفقیت ثبت شد.");
+      return true;
     } catch (error) {
-        console.error("Error resolving position:", error.message);
         showErrorAlert("خطا در ثبت وضعیت نهایی.", error.message);
         set({ isLoading: false, error: error.message });
         return false;
     }
   },
   
+  reopenPosition: async (position) => {
+    set({ isLoading: true });
+    try {
+      if (position.status === 'ASSIGNED') {
+        const noteToFind = `[ref_cc:${position.id}]`;
+        const stockActions = useStockTradesStore.getState().actions;
+        const linkedSaleAction = stockActions.find(a => a.notes && a.notes.includes(noteToFind));
+        
+        if (linkedSaleAction) {
+          const deleteSuccess = await useStockTradesStore.getState().deleteAction(linkedSaleAction.id);
+          if (!deleteSuccess) throw new Error("حذف رویداد فروش مرتبط با این معامله با مشکل مواجه شد.");
+        }
+      }
+
+      const updatePayload = {
+        status: 'OPEN',
+        closing_date: null,
+        closing_price_per_share: null,
+        closing_commission: null,
+      };
+
+      const { error } = await supabase.from("covered_calls").update(updatePayload).eq("id", position.id);
+      if(error) throw error;
+
+      await get().fetchPositions();
+      showSuccessToast("پوزیشن با موفقیت بازگشایی شد.");
+      return true;
+    } catch (error) {
+      showErrorAlert("خطا در بازگشایی پوزیشن.", error.message);
+      set({ isLoading: false });
+      return false;
+    }
+  },
+
   deletePosition: async (id) => {
     set({ isLoading: true });
     try {
       const { error } = await supabase.from("covered_calls").delete().eq("id", id);
-      if (error) throw error;
-      set((state) => ({
-        positions: state.positions.filter((p) => p.id !== id),
-        isLoading: false,
-      }));
+      if(error) throw error;
+      await get().fetchPositions();
       showSuccessToast("پوزیشن با موفقیت حذف شد.");
       return true;
     } catch (error) {
-      console.error("Error deleting covered call position:", error.message);
-      showErrorAlert("خطا در حذف پوزیشن.");
+      showErrorAlert("خطا در حذف پوزیشن.", error.message);
       set({ isLoading: false, error: error.message });
       return false;
     }

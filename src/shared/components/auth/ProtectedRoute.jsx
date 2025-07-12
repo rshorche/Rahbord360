@@ -1,19 +1,22 @@
 import { Navigate } from "react-router-dom";
-import useSession from "../../../features/auth/hooks/useSession";
+import useAuthStore from "../../../features/auth/store/useAuthStore";
+import LoadingSpinner from "../ui/LoadingSpinner";
 
 export default function ProtectedRoute({ children }) {
-  const { session, sessionLoading } = useSession();
+  // Read session state DIRECTLY from the central store
+  const { session, sessionLoading } = useAuthStore();
 
   if (sessionLoading) {
-    // در حین بارگذاری وضعیت کاربر، می‌توان یک اسپینر یا صفحه لودینگ نمایش داد
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingSpinner text="در حال بررسی وضعیت ورود..." />
+      </div>
+    );
   }
 
   if (!session) {
-    // اگر کاربر لاگین نکرده باشد، به صفحه ورود هدایت می‌شود
     return <Navigate to="/auth/login" replace />;
   }
 
-  // اگر کاربر لاگین کرده باشد، محتوای اصلی نمایش داده می‌شود
   return children;
 }

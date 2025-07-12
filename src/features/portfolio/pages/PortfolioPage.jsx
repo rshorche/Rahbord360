@@ -1,9 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import useStockTradesStore from "../store/useStockTradesStore";
 import usePriceHistoryStore from "../../../shared/store/usePriceHistoryStore";
-import useAllSymbolsStore from "../../../shared/store/useAllSymbolsStore";
 import { processPortfolio } from "../utils/portfolioCalculator.js";
-import { getMasterColumnDefs, getDetailColumnDefs } from "../utils/portfolioTableConfig.jsx";
+import { getMasterColumnDefs, getClosedColumnDefs, getDetailColumnDefs } from "../utils/portfolioTableConfig.jsx";
 import { showConfirmAlert } from "../../../shared/utils/notifications";
 import AgGridTable from "../../../shared/components/ui/AgGridTable";
 import Modal from "../../../shared/components/ui/Modal";
@@ -13,84 +12,70 @@ import Card from "../../../shared/components/ui/Card";
 import { PlusCircle, Wallet, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 
 export default function PortfolioPage() {
-  const { actions, fetchActions, deleteAction, isLoading: isActionsLoading } = useStockTradesStore();
-  
-  const { priceHistory, fetchAllSymbolsFromDB } = usePriceHistoryStore(); 
-  
-  const { fetchAllSymbolsForSearch } = useAllSymbolsStore();
+  const { actions, deleteAction, isLoading: isActionsLoading } = useStockTradesStore();
+  const { priceHistory } = usePriceHistoryStore();
 
   const [activeTab, setActiveTab] = useState("open");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isEditActionModalOpen, setIsEditActionModalOpen] = useState(false);
   const [editingAction, setEditingAction] = useState(null);
   const [detailData, setDetailData] = useState({ symbol: "", trades: [] });
 
-  useEffect(() => {
-    fetchActions();
-    fetchAllSymbolsFromDB(); 
-    fetchAllSymbolsForSearch();
-  }, [fetchActions, fetchAllSymbolsFromDB, fetchAllSymbolsForSearch]);
-
-const { openPositions, closedPositions } = useMemo(() => {
-    const latestPricesForCalculator = Array.from(priceHistory.entries()).map(
-      ([symbol, data]) => ({
-        symbol: symbol,
-        price: data.price,
-      })
-    );
+  const { openPositions, closedPositions } = useMemo(() => {
+    const latestPricesForCalculator = Array.from(priceHistory.values());
     return processPortfolio(actions, latestPricesForCalculator);
   }, [actions, priceHistory]);
-  
+
   const portfolioMetrics = useMemo(() => {
     const totalCurrentValue = openPositions.reduce((sum, pos) => sum + pos.currentValue, 0);
     const totalUnrealizedPL = openPositions.reduce((sum, pos) => sum + pos.unrealizedPL, 0);
     const allPositions = [...openPositions, ...closedPositions];
-    const totalRealizedReturn = allPositions.reduce((sum, pos) => sum + pos.totalRealizedPL + pos.totalDividend + pos.totalRightsSellRevenue, 0);
+    const totalRealizedReturn = allPositions.reduce((sum, pos) => sum + pos.totalRealizedPL + pos.totalDividend, 0);
     return { totalCurrentValue, totalUnrealizedPL, totalRealizedReturn };
   }, [openPositions, closedPositions]);
 
-  const handleOpenAddModal = useCallback(() => setIsAddModalOpen(true), []);
-  const handleCloseAddModal = useCallback(() => setIsAddModalOpen(false), []);
+  const handleOpenAddModal = useCallback(() => {
+    setEditingAction(null);
+    setIsAddModalOpen(true);
+  }, []);
+
+  const handleCloseAddModal = useCallback(() => {
+    setIsAddModalOpen(false);
+    setEditingAction(null);
+  }, []);
 
   const handleOpenDetailModal = useCallback((summaryRowData) => {
     setDetailData({ symbol: summaryRowData.symbol, trades: summaryRowData.detailData });
     setIsDetailModalOpen(true);
   }, []);
+  
   const handleCloseDetailModal = useCallback(() => setIsDetailModalOpen(false), []);
 
-const handleEditAction = useCallback((action) => {
-    setIsDetailModalOpen(false); 
-    
-    setTimeout(() => { 
+  const handleEditAction = useCallback((action) => {
+    setIsDetailModalOpen(false);
+    setTimeout(() => {
       setEditingAction(action);
-      setIsEditActionModalOpen(true);
+      setIsAddModalOpen(true);
     }, 150);
   }, []);
-  const handleCloseEditActionModal = useCallback(() => {
-    setIsEditActionModalOpen(false);
-    setEditingAction(null);
-    handleCloseDetailModal();
-  }, [handleCloseDetailModal]);
 
   const handleDeleteAction = useCallback(async (id) => {
-    const confirmed = await showConfirmAlert("حذف رویداد", "آیا از حذف این رویداد مطمئن هستید؟ این عمل غیرقابل بازگشت است.");
+    const confirmed = await showConfirmAlert("حذف رویداد", "آیا از حذف این رویداد مطمئن هستید؟");
     if (confirmed) {
       const success = await deleteAction(id);
-      if (success) handleCloseDetailModal();
+      if (success) {
+        handleCloseDetailModal();
+      }
     }
   }, [deleteAction, handleCloseDetailModal]);
 
   const masterColumnDefs = useMemo(() => getMasterColumnDefs(handleOpenDetailModal), [handleOpenDetailModal]);
+  const closedColumnDefs = useMemo(() => getClosedColumnDefs(handleOpenDetailModal), [handleOpenDetailModal]);
   const detailColumnDefs = useMemo(() => getDetailColumnDefs(handleEditAction, handleDeleteAction), [handleEditAction, handleDeleteAction]);
 
   const tabButtonClasses = "px-4 py-2 text-sm font-medium transition-colors border-b-2";
   const activeTabClasses = "border-primary-500 text-primary-600";
   const inactiveTabClasses = "border-transparent text-content-500 hover:text-content-700";
-
-  if (!portfolioMetrics) {
-    return <div>در حال بارگذاری...</div>;
-  }
 
   return (
     <div className="space-y-6">
@@ -102,9 +87,9 @@ const handleEditAction = useCallback((action) => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        <Card title="ارزش لحظه‌ای پورتفوی" amount={portfolioMetrics.totalCurrentValue} color="primary" icon={<Wallet size={24} className="text-primary-600" />} />
-        <Card title="سود/زیان محقق نشده" amount={portfolioMetrics.totalUnrealizedPL} color={portfolioMetrics.totalUnrealizedPL >= 0 ? "success" : "danger"} icon={portfolioMetrics.totalUnrealizedPL >= 0 ? <TrendingUp size={24} className="text-success-600" /> : <TrendingDown size={24} className="text-danger-600" />} />
-        <Card title="بازده محقق شده (فروش و سود نقدی)" amount={portfolioMetrics.totalRealizedReturn} color={portfolioMetrics.totalRealizedReturn >= 0 ? "success" : "danger"} icon={<DollarSign size={24} className={portfolioMetrics.totalRealizedReturn >= 0 ? "text-success-600" : "text-danger-600"} />} />
+        <Card title="ارزش لحظه‌ای پورتفوی" amount={portfolioMetrics.totalCurrentValue} color="primary" icon={<Wallet size={24} />} />
+        <Card title="سود/زیان محقق نشده" amount={portfolioMetrics.totalUnrealizedPL} color={portfolioMetrics.totalUnrealizedPL >= 0 ? "success" : "danger"} icon={portfolioMetrics.totalUnrealizedPL >= 0 ? <TrendingUp size={24} /> : <TrendingDown size={24} />} />
+        <Card title="بازده محقق شده" amount={portfolioMetrics.totalRealizedReturn} color={portfolioMetrics.totalRealizedReturn >= 0 ? "success" : "danger"} icon={<DollarSign size={24} />} />
       </div>
 
       <div className="border-b border-content-200">
@@ -117,16 +102,21 @@ const handleEditAction = useCallback((action) => {
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <AgGridTable
           rowData={activeTab === "open" ? openPositions : closedPositions}
-          columnDefs={masterColumnDefs}
+          columnDefs={activeTab === "open" ? masterColumnDefs : closedColumnDefs}
           isLoading={isActionsLoading}
         />
       </div>
-
-      <Modal isOpen={isAddModalOpen || isEditActionModalOpen} onClose={isAddModalOpen ? handleCloseAddModal : handleCloseEditActionModal} title={isEditActionModalOpen ? "ویرایش رویداد" : "ثبت رویداد جدید"}>
+      
+      <Modal 
+        isOpen={isAddModalOpen} 
+        onClose={handleCloseAddModal} 
+        title={editingAction ? "ویرایش رویداد" : "ثبت رویداد جدید"}
+        isLoading={isActionsLoading}
+      >
         <AddActionModal
-          onSubmitSuccess={isAddModalOpen ? handleCloseAddModal : handleCloseEditActionModal}
+          onSubmitSuccess={handleCloseAddModal}
           initialData={editingAction}
-          isEditMode={isEditActionModalOpen}
+          isEditMode={!!editingAction}
           portfolioPositions={openPositions}
         />
       </Modal>

@@ -141,18 +141,16 @@ export default function AddBuySellForm({
                     className="px-4 py-2 text-sm hover:bg-content-100 cursor-pointer"
                     onMouseDown={() => handleSelectSymbol(s)}
                   >
-                    {/* --- تغییر اصلی اینجاست --- */}
                     <span className="font-semibold">{s.l18}</span>
-                    {/* خط مربوط به نمایش نام کامل شرکت حذف شد */}
                   </li>
                 ))}
               </ul>
             )}
           </div>
 
-          <TextInput name="price" label="قیمت (تومان)" inputMode="decimal" />
-          <TextInput name="quantity" label="تعداد" type="number" inputMode="numeric" />
-          <TextInput name="commission" label="کارمزد (تومان)" type="number" inputMode="decimal" />
+          <TextInput name="price" label="قیمت (تومان)" type="number" />
+          <TextInput name="quantity" label="تعداد" type="number" />
+          <TextInput name="commission" label="کارمزد (تومان)" type="number" />
         </div>
         <TextareaInput name="notes" label="یادداشت (اختیاری)" rows={2} />
 

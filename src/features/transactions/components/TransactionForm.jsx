@@ -9,17 +9,17 @@ import SelectInput from "../../../shared/components/ui/forms/SelectInput";
 import Button from "../../../shared/components/ui/Button";
 
 export default function TransactionForm({
-  onSubmitSuccess,
+  onSubmit,
   initialData,
-  isEditMode = false,
 }) {
+  const isEditMode = !!initialData;
+  
   const methods = useForm({
     resolver: yupResolver(transactionSchema),
-    // **تغییر اصلی اینجاست**
     defaultValues: initialData
-      ? { ...initialData } // در حالت ویرایش، داده‌های اولیه خودش تاریخ استاندارد دارد
+      ? { ...initialData, date: new Date(initialData.date) }
       : {
-          date: new Date(), // در حالت افزودن، از شیء استاندارد Date استفاده می‌کنیم
+          date: new Date(),
           broker: "",
           amount: "",
           type: "deposit",
@@ -34,32 +34,16 @@ export default function TransactionForm({
   } = methods;
 
   useEffect(() => {
-    if (isEditMode && initialData) {
-      reset(initialData);
-    } else if (!isEditMode) {
-      // **و تغییر اصلی اینجاست**
-      reset({
-        date: new Date(), // ریست کردن فرم هم با شیء استاندارد Date انجام می‌شود
-        broker: "",
-        amount: "",
-        type: "deposit",
-        description: "",
-      });
+    if (initialData) {
+      reset({ ...initialData, date: new Date(initialData.date) });
+    } else {
+      reset({ date: new Date(), type: 'deposit', broker: '', amount: '', description: '' });
     }
-  }, [initialData, isEditMode, reset]);
-
-  const handleFormSubmit = (formData) => {
-    if (onSubmitSuccess) {
-      const dataToSend = isEditMode
-        ? { ...formData, id: initialData.id }
-        : formData;
-      onSubmitSuccess(dataToSend);
-    }
-  };
+  }, [initialData, reset]);
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
           <DateInput name="date" label="تاریخ تراکنش" />
           <SelectInput
@@ -79,7 +63,6 @@ export default function TransactionForm({
             name="amount"
             label="مبلغ (تومان)"
             type="number"
-            inputMode="decimal"
           />
         </div>
         <div className="sm:col-span-2">
@@ -87,7 +70,6 @@ export default function TransactionForm({
             name="description"
             label="توضیحات (اختیاری)"
             rows={3}
-            placeholder="شرح تراکنش..."
           />
         </div>
         <div className="flex justify-end pt-3">

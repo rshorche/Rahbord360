@@ -4,16 +4,13 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import "react-multi-date-picker/styles/layouts/mobile.css";
 import FormFieldWrapper from "./FormFieldWrapper";
-import { cn } from "../../../../shared/utils/cn";
+import { cn } from "../../../utils/cn";
 import { CalendarDays } from "lucide-react";
 
 const DateInput = ({
   label,
   name,
   className,
-  inputClassName,
-  placeholder,
-  rules = {},
   ...props
 }) => {
   const {
@@ -36,28 +33,23 @@ const DateInput = ({
       <Controller
         control={control}
         name={name}
-        rules={rules}
         render={({ field: { onChange, onBlur, value } }) => {
           return (
             <DatePicker
               id={name}
               value={value}
               onBlur={onBlur}
-              onClose={() => onBlur()}
               onChange={(dateObject) => {
                 onChange(dateObject ? dateObject.toDate() : null);
               }}
               calendar={persian}
               locale={persian_fa}
               calendarPosition="bottom-right"
-              placeholder={placeholder}
               inputClass={cn(
-                "w-full h-12 bg-transparent text-sm text-content-800 placeholder:text-content-400 outline-none ",
-                inputClassName
+                "w-full h-12 bg-transparent text-sm text-content-800 outline-none"
               )}
               containerClassName="w-full h-full"
               arrow={false}
-              // --- تغییر اصلی اینجاست ---
               portal 
               {...props}
             />

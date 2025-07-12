@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { Outlet, useLocation } from "react-router-dom";
-import { Menu, Home, BarChart2, Briefcase, ShieldCheck } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Outlet } from "react-router-dom";
+import { Menu, Home, BarChart2, Briefcase, ShieldCheck, Zap, Gem } from "lucide-react"; // <-- Gem اضافه شد
 import { cn } from "../../utils/cn";
 import Sidebar from "../Sidebar";
 import useAllSymbolsStore from "../../store/useAllSymbolsStore";
@@ -8,17 +8,21 @@ import usePriceHistoryStore from "../../store/usePriceHistoryStore";
 import useStockTradesStore from "../../../features/portfolio/store/useStockTradesStore";
 import useTransactionStore from "../../../features/transactions/store/useTransactionStore";
 import useCoveredCallStore from "../../../features/covered-call/store/useCoveredCallStore";
+import useOptionsStore from "../../../features/options/store/useOptionsStore";
+import useFundTradesStore from "../../../features/funds/store/useFundTradesStore"; // <-- اضافه شد
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const location = useLocation();
 
+  // ... (کالکشن تمام fetch ها)
   const { fetchAllSymbolsForSearch } = useAllSymbolsStore();
   const { fetchAllSymbolsFromDB } = usePriceHistoryStore();
   const { fetchActions } = useStockTradesStore();
   const { fetchTransactions } = useTransactionStore();
   const { fetchPositions: fetchCoveredCallPositions } = useCoveredCallStore();
+  const { fetchPositions: fetchOptionsPositions } = useOptionsStore();
+  const { fetchTrades: fetchFundTrades } = useFundTradesStore(); // <-- اضافه شد
 
   useEffect(() => {
     fetchAllSymbolsForSearch();
@@ -26,7 +30,10 @@ export default function DashboardLayout() {
     fetchActions();
     fetchTransactions();
     fetchCoveredCallPositions();
-  }, [fetchAllSymbolsForSearch, fetchAllSymbolsFromDB, fetchActions, fetchTransactions, fetchCoveredCallPositions]);
+    fetchOptionsPositions();
+    fetchFundTrades(); // <-- اضافه شد
+  }, [fetchAllSymbolsForSearch, fetchAllSymbolsFromDB, fetchActions, fetchTransactions, fetchCoveredCallPositions, fetchOptionsPositions, fetchFundTrades]);
+
 
   const openSidebar = useCallback(() => setIsSidebarOpen(true), []);
   const closeSidebar = useCallback(() => {
@@ -52,9 +59,11 @@ export default function DashboardLayout() {
 
   const navigationLinks = [
     { to: "/dashboard", label: "خلاصه داشبورد", icon: <Home size={24} />, end: true },
-    { to: "/dashboard/transactions", label: "تراکنش‌ها", icon: <BarChart2 size={24} />, end: true },
-    { to: "/dashboard/portfolio", label: "پورتفولیو", icon: <Briefcase size={24} />, end: true },
-    { to: "/dashboard/covered-calls", label: "کاورد کال", icon: <ShieldCheck size={24} />, end: true },
+    { to: "/dashboard/transactions", label: "تراکنش‌ها", icon: <BarChart2 size={24} /> },
+    { to: "/dashboard/portfolio", label: "پورتفولیو", icon: <Briefcase size={24} /> },
+    { to: "/dashboard/covered-calls", label: "کاورد کال", icon: <ShieldCheck size={24} /> },
+    { to: "/dashboard/options", label: "اختیار معامله", icon: <Zap size={24} /> },
+    { to: "/dashboard/funds", label: "صندوق‌ها", icon: <Gem size={24} /> }, // <-- اضافه شد
   ];
 
   return (
@@ -63,7 +72,7 @@ export default function DashboardLayout() {
         isOpen={isSidebarOpen}
         closeSidebar={closeSidebar}
         navLinks={navigationLinks}
-        brandName="راهبورد ۳۶۰"
+        brandName="راهبرد ۳۶۰"
         isCollapsed={isCollapsed}
         toggleCollapsed={toggleCollapsed}
       />

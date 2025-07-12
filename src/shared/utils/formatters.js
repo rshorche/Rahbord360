@@ -1,4 +1,4 @@
-export const formatCurrency = (value, precision = 2) => {
+export const formatCurrency = (value, precision = 0) => {
   if (value == null || isNaN(Number(value))) return "-";
   const num = Number(value);
   return num.toLocaleString("fa-IR", {
@@ -6,6 +6,7 @@ export const formatCurrency = (value, precision = 2) => {
     maximumFractionDigits: precision,
   });
 };
+
 export const formatDisplayNumber = (value, precision = 2, suffix = "") => {
   if (value == null || isNaN(Number(value))) return "-";
   const num = Number(value);

@@ -6,23 +6,13 @@ import DateInput from "../../../shared/components/ui/forms/DateInput";
 import TextInput from "../../../shared/components/ui/forms/TextInput";
 import Button from "../../../shared/components/ui/Button";
 
-// 1. تعریف گزینه‌های وضعیت به صورت یک آرایه
 const STATUS_OPTIONS = [
   { value: "CLOSED", label: "بستن دستی (Offset)" },
   { value: "EXPIRED", label: "منقضی شدن" },
   { value: "ASSIGNED", label: "اعمال شدن" },
 ];
 
-/**
- * فرم مدیریت وضعیت نهایی یک پوزیشن کاورد کال
- * @param {object} props
- * @param {object} props.position - داده‌های پوزیشن انتخاب شده
- * @param {function(object): Promise<void>} props.onSubmit - تابعی که هنگام ارسال فرم فراخوانی می‌شود
- * @param {boolean} props.isLoading - وضعیت لودینگ برای دکمه ارسال
- */
 export default function ManageCoveredCallForm({ position, onSubmit, isLoading }) {
-  // 2. وابستگی به useCoveredCallStore حذف شد
-
   const methods = useForm({
     resolver: yupResolver(manageCoveredCallSchema),
     defaultValues: {
@@ -44,7 +34,6 @@ export default function ManageCoveredCallForm({ position, onSubmit, isLoading })
 
   const selectedStatus = watch("status");
 
-  // اگر وضعیت روی "منقضی" یا "اعمال" تنظیم شود، تاریخ به صورت خودکار برابر با تاریخ سررسید می‌شود
   useEffect(() => {
     if (selectedStatus === "EXPIRED" || selectedStatus === "ASSIGNED") {
       setValue("closing_date", new Date(position.expiration_date));
@@ -59,7 +48,6 @@ export default function ManageCoveredCallForm({ position, onSubmit, isLoading })
             وضعیت نهایی پوزیشن را برای{" "}
             <strong>{position.option_symbol}</strong> مشخص کنید.
           </p>
-          {/* 3. رندر کردن گزینه‌ها با استفاده از map */}
           <div className="flex flex-col sm:flex-row sm:gap-x-4 gap-y-2">
             {STATUS_OPTIONS.map(option => (
               <label key={option.value} className="flex items-center gap-x-2 cursor-pointer">
@@ -79,7 +67,6 @@ export default function ManageCoveredCallForm({ position, onSubmit, isLoading })
           />
         </div>
 
-        {/* این بخش فقط زمانی نمایش داده می‌شود که پوزیشن به صورت دستی بسته شود */}
         {selectedStatus === "CLOSED" && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <TextInput

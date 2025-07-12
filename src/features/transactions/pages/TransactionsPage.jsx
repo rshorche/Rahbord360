@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useTransactionsLogic } from "../hooks/useTransactionsLogic"; // هوک جدید را ایمپورت می‌کنیم
+import { useTransactionsLogic } from "../hooks/useTransactionsLogic";
 import { getTransactionColumnDefs } from "../utils/transactionTableConfig.jsx";
 import Card from "../../../shared/components/ui/Card";
 import Button from "../../../shared/components/ui/Button";
@@ -9,7 +9,6 @@ import TransactionForm from "../components/TransactionForm";
 import { PlusCircle, Wallet, ArrowUp, ArrowDown } from "lucide-react";
 
 export default function TransactionsPage() {
-  // تمام منطق از طریق این یک خط فراخوانی می‌شود
   const {
     transactions,
     isLoading,
@@ -24,17 +23,15 @@ export default function TransactionsPage() {
     handleSubmitForm,
   } = useTransactionsLogic();
 
-  // تعریف ستون‌ها همچنان اینجا باقی می‌ماند چون مستقیماً به UI مربوط است
   const columnDefs = useMemo(
     () => getTransactionColumnDefs(handleOpenModal, handleDelete),
     [handleOpenModal, handleDelete]
   );
 
   return (
-    <div className="flex flex-col gap-4 md:gap-6 lg:gap-8">
-      {/* --- Header --- */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between items-center">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-content-800">
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <h1 className="text-3xl font-bold text-content-800">
           تراکنش‌های واریز و برداشت
         </h1>
         <Button
@@ -46,8 +43,7 @@ export default function TransactionsPage() {
         </Button>
       </div>
 
-      {/* --- Metric Cards --- */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card
           title="مجموع واریزها"
           amount={totalDeposit}
@@ -68,7 +64,6 @@ export default function TransactionsPage() {
         />
       </div>
 
-      {/* --- Data Grid --- */}
       <div className="bg-white rounded-xl shadow-lg w-full overflow-hidden">
         <AgGridTable
           rowData={transactions}
@@ -77,7 +72,6 @@ export default function TransactionsPage() {
         />
       </div>
 
-      {/* --- Add/Edit Modal --- */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -85,9 +79,8 @@ export default function TransactionsPage() {
         title={editingTransaction ? "ویرایش تراکنش" : "ثبت تراکنش جدید"}
       >
         <TransactionForm
-          onSubmitSuccess={handleSubmitForm}
+          onSubmit={handleSubmitForm}
           initialData={editingTransaction}
-          isEditMode={!!editingTransaction}
         />
       </Modal>
     </div>

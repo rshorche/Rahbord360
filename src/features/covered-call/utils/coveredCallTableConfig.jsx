@@ -10,7 +10,7 @@ const formatDateToJalali = (params) => {
   return new DateObject({ date: new Date(params.value), calendar: persian, locale: persian_fa }).format("YYYY/MM/DD");
 };
 
-const formatCurrencyValue = (p) => (p.value != null ? formatCurrency(p.value, 2) : "-");
+const formatCurrencyValue = (p) => (p.value != null ? formatCurrency(p.value, 0) : "-");
 const formatPercentValue = (p) => (p.value != null ? formatDisplayNumber(p.value, 2, "%") : "-");
 const formatIntegerValue = (p) => (p.value != null ? formatDisplayNumber(p.value, 0) : "-");
 
@@ -37,12 +37,10 @@ export const getOpenPositionsColumnDefs = (onOpenActionsModal) => [
   { headerName: "قیمت اختیار", field: "premium_per_share", width: 130, valueFormatter: formatCurrencyValue },
   { headerName: "قیمت سربه سر", field: "break_even_price", width: 130, valueFormatter: formatCurrencyValue },
   { headerName: "تعداد قرارداد", field: "contracts_count", width: 130, valueFormatter: formatIntegerValue },
-  { headerName: "تعداد سهام", field: "total_required_shares", width: 120, valueFormatter: formatIntegerValue },
   { headerName: "قیمت لحظه ای", field: "current_stock_price", width: 130, valueFormatter: formatCurrencyValue },
   { headerName: "فاصله تا اعمال", field: "distance_to_strike_percent", width: 140, valueFormatter: formatPercentValue, cellClass: (p) => cn(p.value >= 0 ? "text-success-600" : "text-danger-600") },
   { headerName: "سود تا سررسید", field: "return_if_assigned_percent", width: 140, valueFormatter: formatPercentValue },
   { headerName: "سود سالانه", field: "annualized_return_percent", width: 130, valueFormatter: formatPercentValue, cellClass: "font-bold" },
-  { headerName: "فاصله تا سربه سر", field: "distance_to_be_percent", width: 150, valueFormatter: formatPercentValue, cellClass: (p) => cn(p.value >= 0 ? "text-success-600" : "text-danger-600") },
   { headerName: "ارزش سود", field: "max_profit", width: 150, valueFormatter: formatCurrencyValue },
   ...getCommonColumns(onOpenActionsModal).filter(c => c.headerName === 'مدیریت'),
 ];
@@ -64,24 +62,8 @@ export const getHistoryColumnDefs = (onOpenActionsModal) => [
     valueFormatter: formatCurrencyValue, 
     cellClass: (p) => cn(p.value >= 0 ? "text-success-600" : "text-danger-600") 
   },
-  { 
-    headerName: "سود/زیان کل", 
-    field: "total_strategy_pl", 
-    width: 180, 
-    valueFormatter: formatCurrencyValue, 
-    cellClass: (p) => cn(p.value >= 0 ? "text-success-700" : "text-danger-700", "font-bold") 
-  },
-  { 
-    headerName: "بازده نهایی کل", 
-    field: "realized_return_percent",
-    width: 150, 
-    valueFormatter: formatPercentValue, 
-    cellClass: (p) => cn(p.value >= 0 ? "text-success-700" : "text-danger-700", "font-bold") 
-  },
   { headerName: "مدت نگهداری", field: "holding_period_days", width: 130, valueFormatter: (p) => `${formatDisplayNumber(p.value, 0)} روز` },
   { headerName: "تاریخ بستن/سررسید", field: "closing_date", width: 160, valueFormatter: formatDateToJalali },
-  { headerName: "سرمایه اولیه", field: "capital_involved", width: 160, valueFormatter: formatCurrencyValue },
-  { headerName: "پرمیوم خالص", field: "net_premium", width: 160, valueFormatter: formatCurrencyValue },
   { headerName: "یادداشت", field: "notes", width: 180, tooltipField: 'notes' },
   ...getCommonColumns(onOpenActionsModal).filter(c => c.headerName === 'مدیریت'),
 ];

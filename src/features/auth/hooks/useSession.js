@@ -1,34 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { supabase } from "../../../shared/services/supabase";
 import useAuthStore from "../store/useAuthStore";
-// ایمپورت استورهای دیگر
-import useStockTradesStore from "../../portfolio/store/useStockTradesStore";
 import useTransactionStore from "../../transactions/store/useTransactionStore";
+import useStockTradesStore from "../../portfolio/store/useStockTradesStore";
+import useAllSymbolsStore from "../../../shared/store/useAllSymbolsStore";
+import usePriceHistoryStore from "../../../shared/store/usePriceHistoryStore";
 
+// This hook no longer returns anything. Its only job is to update the central store.
 export default function useSession() {
-  const [sessionLoading, setSessionLoading] = useState(true);
-  const { setSession, session } = useAuthStore();
+  const { setSession, setSessionLoading } = useAuthStore();
 
   useEffect(() => {
-    // ... (بخش getInitialSession بدون تغییر باقی می‌ماند)
+    const fetchAllData = () => {
+      useTransactionStore.getState().fetchTransactions();
+      useStockTradesStore.getState().fetchActions();
+      useAllSymbolsStore.getState().fetchAllSymbolsForSearch();
+      usePriceHistoryStore.getState().fetchAllSymbolsFromDB();
+    };
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
-      // اگر کاربر وارد شد، داده‌هایش را واکشی کن
       if (session) {
-        // این دو خط باید حتما کامنت باشند تا خطایی رخ ندهد
-        // useStockTradesStore.getState().fetchActions();
-        // useTransactionStore.getState().fetchTransactions();
+        fetchAllData();
       }
-      setSessionLoading(false);
+      setSessionLoading(false); // Signal that the initial session check is complete
+    };
+
+    getInitialSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
     });
 
     return () => {
       subscription?.unsubscribe();
     };
-  }, [setSession]);
-
-  return { session, sessionLoading };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // We only want this to run once on app startup
 }

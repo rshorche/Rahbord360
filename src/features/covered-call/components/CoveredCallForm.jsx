@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react"; // 1. useMemo ایمپورت شد
+import { useEffect, useMemo } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { coveredCallSchema } from "../utils/schemas";
@@ -31,7 +31,11 @@ export default function CoveredCallForm({
 }) {
   const methods = useForm({
     resolver: yupResolver(coveredCallSchema),
-    defaultValues: initialData || DEFAULT_FORM_VALUES,
+    defaultValues: initialData ? {
+        ...initialData,
+        trade_date: new Date(initialData.trade_date),
+        expiration_date: new Date(initialData.expiration_date),
+    } : DEFAULT_FORM_VALUES,
   });
 
   const {
@@ -51,7 +55,7 @@ export default function CoveredCallForm({
         trade_date: new Date(initialData.trade_date),
         expiration_date: new Date(initialData.expiration_date),
       });
-    } else if (!isEditMode) {
+    } else {
       reset(DEFAULT_FORM_VALUES);
     }
   }, [initialData, isEditMode, reset]);
@@ -65,19 +69,11 @@ export default function CoveredCallForm({
     }
   }, [selectedUnderlying, openPositions, setValue, isEditMode]);
 
-  const handleFormSubmit = async (formData) => {
-    await onSubmit(formData);
-  };
-
-  // 2. منطق ساخت گزینه‌ها با useMemo بهبود یافت
   const underlyingSymbolOptions = useMemo(() => {
     const symbols = new Set(openPositions.map(p => p.symbol));
-
-    // در حالت ویرایش، اطمینان حاصل می‌شود که نماد فعلی همیشه در لیست گزینه‌ها وجود دارد
     if (isEditMode && initialData?.underlying_symbol) {
       symbols.add(initialData.underlying_symbol);
     }
-
     return Array.from(symbols).map(symbol => ({
       value: symbol,
       label: symbol,
@@ -86,7 +82,7 @@ export default function CoveredCallForm({
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <SelectInput
             name="underlying_symbol"

@@ -1,92 +1,56 @@
-import { useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { ChevronDown } from "lucide-react";
 import FormFieldWrapper from "./FormFieldWrapper";
 import { cn } from "../../../../shared/utils/cn";
+import { ChevronDown } from "lucide-react";
 
 const SelectInput = ({
   label,
-  name, 
+  name,
   className,
   options = [],
   placeholder,
-  value: controlledValue,
-  onChange: controlledOnChange,
+  value,
+  onChange,
   ...props
 }) => {
-  const methods = useFormContext();
+  const formContext = useFormContext();
+  const isFormControlled = !!(formContext && name);
 
-  const isControlledByForm = !!name && !!methods;
+  const error = isFormControlled ? formContext.formState.errors[name]?.message : null;
 
-  const { register, formState: { errors } = {} } = isControlledByForm
-    ? methods
-    : {};
-
-  if (name && !methods) {
-    console.error(`SelectInput: "name" prop provided for "${name}", but no FormProvider context found. 
-                    Ensure SelectInput is wrapped in FormProvider or remove "name" prop to use as a controlled component.`);
-  }
-
-  const error = isControlledByForm && errors && errors[name]?.message;
-  const [isOpen, setIsOpen] = useState(false);
-
-  const formRegisterProps = isControlledByForm ? register(name) : {};
-  const handleOnBlur = (e) => {
-    setIsOpen(false);
-    if (isControlledByForm && formRegisterProps.onBlur)
-      formRegisterProps.onBlur(e);
-    else if (controlledOnChange) controlledOnChange(e);
-  };
-
-  const handleOnChange = (e) => {
-    setIsOpen(false);
-    if (isControlledByForm && formRegisterProps.onChange)
-      formRegisterProps.onChange(e);
-    if (controlledOnChange) controlledOnChange(e);
-    e.target.blur();
-  };
-
-  const displayValue = isControlledByForm
-    ? methods.watch(name)
-    : controlledValue;
+  const registerProps = isFormControlled ? formContext.register(name) : {};
 
   return (
     <FormFieldWrapper
       label={label}
-      name={name} 
+      name={name}
       error={error}
-      className={className}>
+      className={className}
+    >
       <div className="relative w-full h-12">
         <select
-          id={name}
-          {...(isControlledByForm ? formRegisterProps : {})} 
-          onFocus={() => setIsOpen(true)}
-          onBlur={handleOnBlur}
-          onChange={handleOnChange}
-          value={displayValue || ""}
+          id={name || undefined}
+          {...registerProps}
+          value={isFormControlled ? undefined : value}
+          onChange={isFormControlled ? registerProps.onChange : onChange}
           className={cn(
-            "w-full h-full bg-transparent px-3 text-sm text-content-800 outline-none appearance-none cursor-pointer",
-            { "text-content-400": !displayValue && placeholder }
+            "w-full h-full bg-transparent px-3 text-sm text-content-800 outline-none appearance-none cursor-pointer"
           )}
-          {...props}>
+          {...props}
+        >
           {placeholder && (
             <option value="" disabled>
               {placeholder}
             </option>
           )}
-          {options.map(({ label, value }) => (
-            <option key={value} value={value}>
-              {label}
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </select>
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center px-2 text-content-500">
-          <ChevronDown
-            size={20}
-            className={cn("transition-transform duration-200", {
-              "rotate-180": isOpen,
-            })}
-          />
+          <ChevronDown size={20} />
         </div>
       </div>
     </FormFieldWrapper>

@@ -3,7 +3,7 @@ import { useFormContext } from "react-hook-form";
 import { Eye, EyeOff } from "lucide-react";
 import Button from "../Button";
 import FormFieldWrapper from "./FormFieldWrapper";
-import { cn } from "../../../../shared/utils/cn";
+import { cn } from "../../../utils/cn";
 
 const TextInput = ({
   label,
@@ -22,9 +22,6 @@ const TextInput = ({
   const error = errors[name]?.message;
 
   const isPassword = type === "password";
-  // --- 1. بخش کلیدی اصلاح شده ---
-  // اگر نوع ورودی "number" بود، ما از نظر فنی از "text" استفاده می‌کنیم تا کنترل را در دست بگیریم،
-  // اما با inputMode به کیبوردها می‌گوییم که عددی باشند.
   const isNumberInput = type === "number";
   const finalInputType = isPassword && showPassword ? "text" : isNumberInput ? "text" : type;
 
@@ -39,11 +36,10 @@ const TextInput = ({
           {...register(name)}
           id={name}
           type={finalInputType}
-          // --- 2. افزودن inputMode برای تجربه کاربری بهتر در موبایل ---
           inputMode={isNumberInput ? "decimal" : props.inputMode}
           className={cn(
             "w-full h-12 bg-transparent px-3 text-sm text-content-800 placeholder:text-content-400 outline-none",
-            "text-left direction-ltr", // برای اینکه اعداد و نقطه به درستی نمایش داده شوند
+            "text-left direction-ltr",
             isPassword && "pl-10",
             inputClassName
           )}
@@ -55,7 +51,7 @@ const TextInput = ({
             variant="ghost"
             size="icon"
             onClick={() => setShowPassword((prev) => !prev)}
-            className="absolute left-1 h-8 w-8 text-content-500 hover:text-content-800 hover:bg-transparent shadow-none hover:shadow-none hover:translate-y-0"
+            className="absolute left-1 h-8 w-8 text-content-500 hover:bg-transparent shadow-none"
             title={showPassword ? "پنهان کردن رمز" : "نمایش رمز"}>
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </Button>
