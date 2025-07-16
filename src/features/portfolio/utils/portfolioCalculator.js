@@ -1,6 +1,5 @@
 export const processPortfolio = (actions, allSymbolsData) => {
   const positionsMap = new Map();
-  const fullyClosedPositions = [];
   const symbolLatestPrices = new Map();
 
   allSymbolsData.forEach((s) => {
@@ -18,11 +17,11 @@ export const processPortfolio = (actions, allSymbolsData) => {
     const { symbol } = action;
     if (!symbol) return;
 
-    if (!positionsMap.has(action.position_id)) {
-      positionsMap.set(action.position_id, createNewPosition(symbol));
+    if (!positionsMap.has(symbol)) {
+      positionsMap.set(symbol, createNewPosition(symbol));
     }
     
-    const position = positionsMap.get(action.position_id);
+    const position = positionsMap.get(symbol);
     position.detailData.push(action);
 
     const quantity = Number(action.quantity) || 0;
@@ -33,7 +32,10 @@ export const processPortfolio = (actions, allSymbolsData) => {
     switch (action.type) {
       case 'buy':
       case 'rights_exercise':
-        if (!position.firstBuyDate) position.firstBuyDate = action.date;
+        if (!position.firstBuyDate || position.remainingQty < 0.001) {
+            position.firstBuyDate = action.date;
+            position.lastSellDate = null;
+        }
         const buyCost = (quantity * price) + commission;
         position.remainingQty += quantity;
         position.totalBuyCost += buyCost;
@@ -52,8 +54,12 @@ export const processPortfolio = (actions, allSymbolsData) => {
           position.remainingQty -= quantity;
           position.totalSoldQty += quantity;
           position.totalSoldValue += sellRevenue;
+          
+          // --- تغییر کلیدی و نهایی برای حل مشکل ---
           if (position.remainingQty < 0.001) {
               position.lastSellDate = action.date;
+              position.remainingQty = 0; // اطمینان از صفر شدن
+              position.totalBuyCost = 0; // اطمینان از صفر شدن
           }
         }
         break;
@@ -115,10 +121,13 @@ export const processPortfolio = (actions, allSymbolsData) => {
     } else {
       position.unrealizedPL = 0;
       position.avgBuyPriceAdjusted = 0;
-      position.remainingQty = 0;
-      const startDate = new Date(position.firstBuyDate);
-      const endDate = new Date(position.lastSellDate);
-      position.positionAgeDays = Math.round((endDate - startDate) / MS_IN_DAY);
+      if(position.firstBuyDate && position.lastSellDate) {
+        const startDate = new Date(position.firstBuyDate);
+        const endDate = new Date(position.lastSellDate);
+        position.positionAgeDays = Math.round((endDate - startDate) / MS_IN_DAY);
+      } else {
+        position.positionAgeDays = 0;
+      }
     }
     
     position.totalPL = position.totalRealizedPL + position.unrealizedPL + position.totalDividend + position.totalRightsSellRevenue;

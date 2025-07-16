@@ -4,16 +4,17 @@ import TransactionsPage from "../features/transactions/pages/TransactionsPage";
 import PortfolioPage from "../features/portfolio/pages/PortfolioPage";
 import CoveredCallPage from "../features/covered-call/pages/CoveredCallPage";
 import OptionsPage from "../features/options/pages/OptionsPage";
-import FundsPage from "../features/funds/pages/FundsPage"; // <-- اضافه شد
+import FundsPage from "../features/funds/pages/FundsPage";
 import AuthLayout from "../shared/components/layout/AuthLayout";
 import LoginPage from "../features/auth/pages/LoginPage";
 import ProtectedRoute from "../shared/components/auth/ProtectedRoute";
 import DashboardOverviewPage from "../features/dashboard/pages/DashboardOverviewPage";
+import HomePage from "../features/home/pages/HomePage"; // صفحه اصلی جدید
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <LoginPage />,
+    element: <HomePage />, // صفحه اصلی به عنوان مسیر ریشه
   },
   {
     path: "auth", 
@@ -35,7 +36,7 @@ const router = createBrowserRouter([
       { path: "portfolio", element: <PortfolioPage /> },
       { path: "covered-calls", element: <CoveredCallPage /> },
       { path: "options", element: <OptionsPage /> },
-      { path: "funds", element: <FundsPage /> }, // <-- اضافه شد
+      { path: "funds", element: <FundsPage /> },
     ],
   },
 ]);

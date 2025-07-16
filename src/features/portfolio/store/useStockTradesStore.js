@@ -3,33 +3,35 @@ import { supabase } from "../../../shared/services/supabase";
 import { showSuccessToast, showErrorAlert } from "../../../shared/utils/notifications";
 import useCoveredCallStore from "../../covered-call/store/useCoveredCallStore";
 
-const calculateCurrentHolding = (actions, symbol) => {
-  return actions
-    .filter(a => a.symbol === symbol)
-    .reduce((total, action) => {
-      const quantity = Number(action.quantity) || 0;
-      switch (action.type) {
-        case 'buy':
-        case 'rights_exercise':
-        case 'bonus':
-          return total + quantity;
-        case 'premium':
-          return action.premium_type === 'bonus_shares' ? total + quantity : total;
-        case 'revaluation':
-          const multiplier = 1 + (Number(action.revaluation_percentage) / 100);
-          return Math.round(total * multiplier);
-        case 'sell':
-          return total - quantity;
-        default:
-          return total;
-      }
-    }, 0);
-};
-
 const useStockTradesStore = create((set, get) => ({
   actions: [],
   isLoading: false,
   error: null,
+
+  calculateCurrentHolding: (symbol) => {
+    const actions = get().actions;
+    if (!actions || !Array.isArray(actions)) return 0;
+    return actions
+      .filter(a => a.symbol === symbol)
+      .reduce((total, action) => {
+        const quantity = Number(action.quantity) || 0;
+        switch (action.type) {
+          case 'buy':
+          case 'rights_exercise':
+          case 'bonus':
+            return total + quantity;
+          case 'premium':
+            return action.premium_type === 'bonus_shares' ? total + quantity : total;
+          case 'revaluation':
+            const multiplier = 1 + (Number(action.revaluation_percentage) / 100);
+            return Math.round(total * multiplier);
+          case 'sell':
+            return total - quantity;
+          default:
+            return total;
+        }
+      }, 0);
+  },
 
   fetchActions: async () => {
     set({ isLoading: true, error: null });
@@ -46,7 +48,7 @@ const useStockTradesStore = create((set, get) => ({
   addAction: async (newAction, isInternalCall = false) => {
     if (newAction.type === 'sell' && !isInternalCall) {
       const { symbol, quantity: quantityToSell } = newAction;
-      const currentHoldings = calculateCurrentHolding(get().actions, symbol);
+      const currentHoldings = get().calculateCurrentHolding(symbol);
       
       const openCoveredCallPositions = await useCoveredCallStore.getState().fetchPositions();
       const requiredSharesToCover = openCoveredCallPositions
@@ -95,24 +97,36 @@ const useStockTradesStore = create((set, get) => ({
     }
   },
 
-  deleteAction: async (id) => {
+  deleteAction: async (id, isInternalCall = false) => {
     const actionToDelete = get().actions.find(a => a.id === id);
     if (!actionToDelete) return false;
 
-    const { symbol } = actionToDelete;
-    const holdingsAfterDelete = calculateCurrentHolding(get().actions.filter(a => a.id !== id), symbol);
-    
-    const openCoveredCallPositions = await useCoveredCallStore.getState().fetchPositions();
-    const requiredSharesToCover = openCoveredCallPositions
-        .filter(p => p.underlying_symbol === symbol && p.status === 'OPEN')
-        .reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
+    // We only perform the check if it's a direct user action, not an internal system call (like reopening a position)
+    if (!isInternalCall) {
+        const { symbol } = actionToDelete;
+        const currentHoldings = get().calculateCurrentHolding(symbol);
+        
+        let holdingsAfterDelete = currentHoldings;
+        const quantity = Number(actionToDelete.quantity) || 0;
 
-    if (holdingsAfterDelete < requiredSharesToCover) {
-      showErrorAlert(
-          "حذف امکان‌پذیر نیست",
-          `<div style="text-align: right; direction: rtl;">شما نمی‌توانید این رویداد را حذف کنید زیرا به سهام آن برای <b>پوشش دادن تعهد کاورد کال</b> خود نیاز دارید.<br/><br/>• تعداد سهام مورد نیاز برای پوشش: <b>${requiredSharesToCover.toLocaleString()}</b> سهم<br/>• تعداد سهام شما پس از حذف این رویداد: <b>${Math.floor(holdingsAfterDelete).toLocaleString()}</b> سهم<br/><br/><b>راه حل:</b> برای حذف این رویداد، ابتدا باید پوزیشن کاورد کال مربوطه را ببندید.</div>`
-      );
-      return false;
+        if (['buy', 'bonus', 'rights_exercise'].includes(actionToDelete.type) || (actionToDelete.type === 'premium' && actionToDelete.premium_type === 'bonus_shares')) {
+            holdingsAfterDelete -= quantity;
+        } else if (actionToDelete.type === 'sell') {
+            holdingsAfterDelete += quantity;
+        }
+
+        const openCoveredCallPositions = await useCoveredCallStore.getState().fetchPositions();
+        const requiredSharesToCover = openCoveredCallPositions
+            .filter(p => p.underlying_symbol === symbol && p.status === 'OPEN')
+            .reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
+
+        if (holdingsAfterDelete < requiredSharesToCover) {
+        showErrorAlert(
+            "حذف امکان‌پذیر نیست",
+            `<div style="text-align: right; direction: rtl;">شما نمی‌توانید این رویداد را حذف کنید زیرا به سهام آن برای <b>پوشش دادن تعهد کاورد کال</b> خود نیاز دارید.<br/><br/>• تعداد سهام مورد نیاز برای پوشش: <b>${requiredSharesToCover.toLocaleString()}</b> سهم<br/>• تعداد سهام شما پس از حذف این رویداد: <b>${Math.floor(holdingsAfterDelete).toLocaleString()}</b> سهم<br/><br/><b>راه حل:</b> برای حذف این رویداد، ابتدا باید پوزیشن کاورد کال مربوطه را ببندید.</div>`
+        );
+        return false;
+        }
     }
     
     set({ isLoading: true });
