@@ -31,3 +31,7 @@ export const updatePasswordSchema = yup.object().shape({
     .oneOf([yup.ref("password"), null], "رمزهای عبور باید مطابقت داشته باشند.")
     .required("تکرار رمز عبور الزامی است."),
 });
+
+export const forgotPasswordSchema = yup.object().shape({
+  email,
+});

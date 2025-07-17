@@ -1,35 +1,46 @@
-import Swal from "sweetalert2";
+import Swal from 'sweetalert2';
 
-export const showSuccessToast = (text) => {
+export const showSuccessToast = (title) => {
   Swal.fire({
-    icon: "success",
-    text: text,
-    timer: 1500,
+    icon: 'success',
+    title: title,
     toast: true,
-    position: "top-end",
+    position: 'top-end',
     showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
   });
 };
 
-export const showErrorAlert = (title, htmlContent) => {
-  const defaultText = "مشکلی در ذخیره‌سازی اطلاعات رخ داد.";
+export const showErrorAlert = (title, text = '') => {
   Swal.fire({
-    icon: "error",
-    title: title || "خطا!",
-    html: htmlContent || defaultText, 
+    icon: 'error',
+    title: title,
+    text: text,
+    confirmButtonText: 'متوجه شدم',
+  });
+};
+
+// --- این تابع را اضافه کنید ---
+export const showInfoAlert = (title, text = '') => {
+  Swal.fire({
+    icon: 'info',
+    title: title,
+    text: text,
+    confirmButtonText: 'باشه',
   });
 };
 
 export const showConfirmAlert = async (title, text) => {
-  const result = await Swal.fire({
-    title: title,
-    text: text,
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#d33",
-    cancelButtonColor: "#6b7280",
-    confirmButtonText: "بله، مطمئنم!",
-    cancelButtonText: "لغو",
-  });
-  return result.isConfirmed;
+    const result = await Swal.fire({
+        title: title,
+        text: text,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'بله، حذف کن!',
+        cancelButtonText: 'انصراف'
+    });
+    return result.isConfirmed;
 };

@@ -3,13 +3,15 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { updatePasswordSchema } from "../utils/authValidation";
 import TextInput from "../../../shared/components/ui/forms/TextInput";
 import Button from "../../../shared/components/ui/Button";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { showSuccessToast } from "../../../shared/utils/notifications";
 import useAuthStore from "../store/useAuthStore";
+import LoadingSpinner from "../../../shared/components/ui/LoadingSpinner";
 
 export default function UpdatePasswordPage() {
   const navigate = useNavigate();
-  const { updatePassword, isLoading } = useAuthStore();
+  const { updatePassword, isLoading, session, sessionLoading, authEvent } = useAuthStore();
+  
   const methods = useForm({
     resolver: yupResolver(updatePasswordSchema),
   });
@@ -21,6 +23,28 @@ export default function UpdatePasswordPage() {
       navigate("/auth/login");
     }
   };
+
+  if (sessionLoading) {
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <LoadingSpinner text="در حال بررسی لینک بازیابی..." />
+        </div>
+    );
+  }
+
+  if (authEvent === 'SIGNED_IN' || !session) {
+    return (
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full text-center">
+        <h2 className="text-xl font-bold text-danger-700 mb-4">لینک نامعتبر یا منقضی شده</h2>
+        <p className="text-content-600 mb-6">
+          این لینک بازیابی دیگر معتبر نیست. لطفاً دوباره درخواست دهید.
+        </p>
+        <Link to="/auth/forgot-password">
+          <Button variant="primary">بازگشت به صفحه فراموشی رمز</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-8 rounded-2xl shadow-xl w-full">
