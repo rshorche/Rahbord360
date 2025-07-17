@@ -3,6 +3,24 @@ import { supabase } from "../../../shared/services/supabase";
 import { showSuccessToast, showErrorAlert } from "../../../shared/utils/notifications";
 import { DateObject } from "react-multi-date-picker";
 
+const sanitizePayload = (formData) => {
+    const validKeys = [
+        'user_id', 'underlying_symbol', 'option_symbol', 'option_type',
+        'trade_type', 'trade_date', 'expiration_date', 'strike_price',
+        'contracts_count', 'premium', 'commission', 'notes', 'status', 'closing_date'
+    ];
+    const payload = {};
+    for (const key of validKeys) {
+        if (formData[key] !== undefined && formData[key] !== null) {
+            payload[key] = formData[key];
+        }
+    }
+    if (payload.trade_date) payload.trade_date = new DateObject(payload.trade_date).format("YYYY-MM-DD");
+    if (payload.expiration_date) payload.expiration_date = new DateObject(payload.expiration_date).format("YYYY-MM-DD");
+    if (payload.closing_date) payload.closing_date = new DateObject(payload.closing_date).format("YYYY-MM-DD");
+    return payload;
+};
+
 const useOptionsStore = create((set, get) => ({
   positions: [],
   isLoading: false,
@@ -11,15 +29,11 @@ const useOptionsStore = create((set, get) => ({
   fetchPositions: async () => {
     set({ isLoading: true, error: null });
     try {
-      const { data, error } = await supabase
-        .from("options_trades")
-        .select("*")
-        .order("trade_date", { ascending: false });
-
+      const { data, error } = await supabase.from("options_trades").select("*").order("trade_date", { ascending: false });
       if (error) throw error;
       set({ positions: data || [], isLoading: false });
     } catch (error) {
-      showErrorAlert("خطا در دریافت اطلاعات معاملات آپشن.");
+      showErrorAlert("خطا در دریافت اطلاعات معاملات آپشن.", error.message);
       set({ error: error.message, isLoading: false });
     }
   },
@@ -29,31 +43,15 @@ const useOptionsStore = create((set, get) => ({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("کاربر شناسایی نشد.");
-
-      const payload = {
-        user_id: user.id,
-        underlying_symbol: formData.underlying_symbol,
-        option_symbol: formData.option_symbol,
-        option_type: formData.option_type,
-        trade_type: formData.trade_type,
-        trade_date: new DateObject(formData.trade_date).format("YYYY-MM-DD"),
-        expiration_date: new DateObject(formData.expiration_date).format("YYYY-MM-DD"),
-        strike_price: Number(formData.strike_price),
-        contracts_count: Number(formData.contracts_count),
-        premium: Number(formData.premium),
-        commission: Number(formData.commission) || 0,
-        notes: formData.notes,
-      };
-      
+      const payload = sanitizePayload({ ...formData, user_id: user.id });
       const { error } = await supabase.from("options_trades").insert(payload);
       if (error) throw error;
-
       await get().fetchPositions();
-      showSuccessToast("معامله آپشن با موفقیت ثبت شد.");
+      showSuccessToast("معامله با موفقیت ثبت شد.");
       return true;
     } catch (error) {
-      showErrorAlert("خطا در ثبت معامله آپشن.", error.message);
-      set({ isLoading: false, error: error.message });
+      showErrorAlert("خطا در ثبت معامله.", error.message);
+      set({ isLoading: false });
       return false;
     }
   },
@@ -61,62 +59,19 @@ const useOptionsStore = create((set, get) => ({
   updatePosition: async (id, formData) => {
     set({ isLoading: true });
     try {
-      const payload = {
-        underlying_symbol: formData.underlying_symbol,
-        option_symbol: formData.option_symbol,
-        option_type: formData.option_type,
-        trade_type: formData.trade_type,
-        trade_date: new DateObject(formData.trade_date).format("YYYY-MM-DD"),
-        expiration_date: new DateObject(formData.expiration_date).format("YYYY-MM-DD"),
-        strike_price: Number(formData.strike_price),
-        contracts_count: Number(formData.contracts_count),
-        premium: Number(formData.premium),
-        commission: Number(formData.commission) || 0,
-        notes: formData.notes,
-      };
+      const payload = sanitizePayload(formData);
       const { error } = await supabase.from("options_trades").update(payload).eq("id", id);
       if (error) throw error;
-
       await get().fetchPositions();
       showSuccessToast("معامله با موفقیت ویرایش شد.");
       return true;
     } catch (error) {
-      showErrorAlert("خطا در ویرایش معامله آپشن.", error.message);
-      set({ isLoading: false, error: error.message });
-      return false;
-    }
-  },
-  
-  resolvePosition: async (id, resolveData) => {
-    set({ isLoading: true });
-    try {
-        const { error } = await supabase.from("options_trades").update(resolveData).eq("id", id);
-        if (error) throw error;
-        await get().fetchPositions();
-        return true;
-    } catch (error) {
-        showErrorAlert("خطا در به‌روزرسانی وضعیت پوزیشن.", error.message);
-        set({ isLoading: false });
-        return false;
-    }
-  },
-
-  reopenPosition: async (positionId) => {
-    set({ isLoading: true });
-    try {
-      const { error } = await supabase.from("options_trades").update({ status: 'OPEN', closing_date: null }).eq("id", positionId);
-      if (error) throw error;
-      
-      await get().fetchPositions();
-      showSuccessToast("پوزیشن با موفقیت بازگشایی شد.");
-      return true;
-    } catch (error) {
-      showErrorAlert("خطا در بازگشایی پوزیشن.", error.message);
+      showErrorAlert("خطا در ویرایش معامله.", error.message);
       set({ isLoading: false });
       return false;
     }
   },
-
+  
   deletePosition: async (id) => {
     set({ isLoading: true });
     try {
@@ -126,8 +81,8 @@ const useOptionsStore = create((set, get) => ({
       showSuccessToast("معامله با موفقیت حذف شد.");
       return true;
     } catch (error) {
-      showErrorAlert("خطا در حذف معامله آپشن.", error.message);
-      set({ isLoading: false, error: error.message });
+      showErrorAlert("خطا در حذف معامله.", error.message);
+      set({ isLoading: false });
       return false;
     }
   },

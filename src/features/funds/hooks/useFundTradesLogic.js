@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import useFundTradesStore from "../store/useFundTradesStore";
+import usePriceHistoryStore from "../../../shared/store/usePriceHistoryStore";
+import { processFundPositions } from "../utils/fundCalculator";
 import { showConfirmAlert } from "../../../shared/utils/notifications";
-import { processFundTrades } from "../utils/fundCalculator";
 
 export const useFundTradesLogic = () => {
   const {
@@ -12,73 +13,51 @@ export const useFundTradesLogic = () => {
     updateTrade,
     deleteTrade,
   } = useFundTradesStore();
+  const { priceHistory } = usePriceHistoryStore();
 
   const [activeTab, setActiveTab] = useState("open");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTrade, setEditingTrade] = useState(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [detailData, setDetailData] = useState({ symbol: "", trades: [] });
+  const [modal, setModal] = useState({ type: null, data: null });
 
   useEffect(() => {
     fetchTrades();
   }, [fetchTrades]);
-  
-  const { openPositions, closedPositions } = useMemo(() => {
-    return processFundTrades(trades, new Map());
-  }, [trades]);
 
-  const summaryMetrics = useMemo(() => {
-    return openPositions.reduce((acc, pos) => {
-        acc.totalValue += pos.current_value || 0;
-        acc.totalPL += pos.total_pl || 0;
-        acc.totalInvestment += pos.total_cost || 0;
-        return acc;
-    }, { totalValue: 0, totalPL: 0, totalInvestment: 0 });
-  }, [openPositions]);
-
-  const openModal = useCallback((trade = null) => {
-    setEditingTrade(trade);
-    setIsModalOpen(true);
-  }, []);
-
-  const closeModal = useCallback(() => {
-    setIsModalOpen(false);
-    setEditingTrade(null);
-  }, []);
-  
-  const openDetailModal = useCallback((positionData) => {
-    setDetailData({
-      symbol: positionData.symbol,
-      trades: positionData.detailData,
-    });
-    setIsDetailModalOpen(true);
-  }, []);
-
-  const closeDetailModal = useCallback(() => {
-    setIsDetailModalOpen(false);
-  }, []);
-
-  const handleEditFromDetail = useCallback((trade) => {
-    closeDetailModal();
-    setTimeout(() => openModal(trade), 150);
-  }, [closeDetailModal, openModal]);
-
-  const handleSubmit = useCallback(async (formData) => {
-    const isEdit = !!editingTrade;
-    const success = isEdit
-      ? await updateTrade(editingTrade.id, formData)
-      : await addTrade(formData);
+  const { openPositions, closedPositions, summaryMetrics } = useMemo(() => {
+    if (!trades.length || !priceHistory) {
+      return { openPositions: [], closedPositions: [], summaryMetrics: {} };
+    }
+    const pricesForCalc = Array.from(priceHistory.values());
+    const processedData = processFundPositions(trades, pricesForCalc);
     
-    if (success) closeModal();
-  }, [editingTrade, addTrade, updateTrade, closeModal]);
+    const metrics = {
+        totalValue: processedData.openPositions.reduce((sum, p) => sum + p.currentValue, 0),
+        totalCost: processedData.openPositions.reduce((sum, p) => sum + p.totalBuyCost, 0),
+    };
+    metrics.totalUnrealizedPL = metrics.totalValue - metrics.totalCost;
 
-  const handleDelete = useCallback(async (id) => {
+    return { ...processedData, summaryMetrics: metrics };
+  }, [trades, priceHistory]);
+
+  const openModal = useCallback((type, data = null) => setModal({ type, data }), []);
+  const closeModal = useCallback(() => setModal({ type: null, data: null }), []);
+
+  const handleAddSubmit = useCallback(async (formData) => {
+    const success = await addTrade(formData);
+    if (success) closeModal();
+  }, [addTrade, closeModal]);
+
+  const handleEditSubmit = useCallback(async (formData) => {
+    if (!modal.data) return;
+    const success = await updateTrade(modal.data.id, formData);
+    if (success) closeModal();
+  }, [updateTrade, closeModal, modal.data]);
+
+  const handleDeleteTrade = useCallback(async (id) => {
     const confirmed = await showConfirmAlert("حذف معامله", "آیا از حذف این معامله مطمئن هستید؟");
     if (confirmed) {
       await deleteTrade(id);
-      closeDetailModal();
     }
-  }, [deleteTrade, closeDetailModal]);
+  }, [deleteTrade]);
 
   return {
     isLoading,
@@ -87,16 +66,11 @@ export const useFundTradesLogic = () => {
     openPositions,
     closedPositions,
     summaryMetrics,
-    isModalOpen,
-    editingTrade,
-    isDetailModalOpen,
-    detailData,
+    modal,
     openModal,
     closeModal,
-    openDetailModal,
-    closeDetailModal,
-    handleSubmit,
-    handleDelete,
-    handleEditFromDetail,
+    handleAddSubmit,
+    handleEditSubmit,
+    handleDeleteTrade,
   };
 };

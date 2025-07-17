@@ -4,9 +4,10 @@ import { getOpenPositionsColumnDefs, getHistoryColumnDefs } from "../utils/cover
 import AgGridTable from "../../../shared/components/ui/AgGridTable";
 import Modal from "../../../shared/components/ui/Modal";
 import Button from "../../../shared/components/ui/Button";
+import Card from "../../../shared/components/ui/Card"; // <-- وارد کردن کامپوننت کارت
 import CoveredCallForm from "../components/CoveredCallForm";
 import ManageCoveredCallForm from "../components/ManageCoveredCallForm";
-import { PlusCircle, Edit, Trash2, CheckCircle, RotateCcw } from "lucide-react";
+import { PlusCircle, Edit, Trash2, CheckCircle, RotateCcw, PiggyBank, Briefcase, DollarSign } from "lucide-react"; // <-- آیکون‌های جدید
 import { cn } from "../../../shared/utils/cn";
 
 export default function CoveredCallPage() {
@@ -17,6 +18,7 @@ export default function CoveredCallPage() {
     openPositions,
     historyPositions,
     portfolioOpenPositions,
+    summaryMetrics, // <-- دریافت محاسبات از هوک
     modal,
     openModal,
     closeModal,
@@ -53,6 +55,29 @@ export default function CoveredCallPage() {
           ثبت معامله جدید
         </Button>
       </div>
+
+      {/* بخش جدید: نمایش کارت‌ها */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card
+          title="پرمیوم دریافتی (باز)"
+          amount={summaryMetrics.totalPremiumOpen}
+          color="primary"
+          icon={<PiggyBank size={24} />}
+        />
+        <Card
+          title="سرمایه درگیر (باز)"
+          amount={summaryMetrics.totalCapitalInvolved}
+          color="default"
+          icon={<Briefcase size={24} />}
+        />
+        <Card
+          title="سود/زیان محقق شده"
+          amount={summaryMetrics.totalRealizedPL}
+          color={summaryMetrics.totalRealizedPL >= 0 ? "success" : "danger"}
+          icon={<DollarSign size={24} />}
+        />
+      </div>
+
       <div className="border-b border-content-200">
         <nav className="-mb-px flex space-x-4 rtl:space-x-reverse" aria-label="Tabs">
           <button
@@ -132,7 +157,7 @@ export default function CoveredCallPage() {
               </Button>
           )}
           <Button
-            variant="danger-light"
+            variant="danger"
             onClick={() => handleDeletePosition(modal.data)}
             icon={<Trash2 size={18} />}
           >

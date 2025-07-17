@@ -10,8 +10,8 @@ const emptyStringToUndefined = (value, originalValue) => {
 export const optionsTradeSchema = yup.object().shape({
     underlying_symbol: yup.string().required("انتخاب نماد پایه الزامی است."),
     option_symbol: yup.string().required("انتخاب نماد آپشن الزامی است."),
-    option_type: yup.string().oneOf(['call', 'put']).required("انتخاب نوع اختیار الزامی است."),
-    trade_type: yup.string().oneOf(['buy_to_open', 'sell_to_open', 'buy_to_close', 'sell_to_close']).required("انتخاب نوع معامله الزامی است."),
+    option_type: yup.string().oneOf(['call', 'put']).required(),
+    trade_type: yup.string().oneOf(['buy_to_open', 'sell_to_open', 'buy_to_close', 'sell_to_close']).required(),
     trade_date: yup.date().required("تاریخ معامله الزامی است."),
     expiration_date: yup.date()
         .required("تاریخ سررسید الزامی است.")
@@ -21,4 +21,10 @@ export const optionsTradeSchema = yup.object().shape({
     premium: yup.number().transform(emptyStringToUndefined).positive("پرمیوم باید مثبت باشد.").required("پرمیوم دریافتی/پرداختی الزامی است."),
     commission: yup.number().transform(emptyStringToUndefined).min(0, "کارمزد نمی‌تواند منفی باشد.").default(0),
     notes: yup.string().optional(),
+});
+
+export const manageOptionSchema = yup.object().shape({
+    status: yup.string().oneOf(['EXERCISED', 'EXPIRED']).required("انتخاب وضعیت الزامی است."),
+    closing_date: yup.date().required("تاریخ اعمال/انقضا الزامی است."),
+    contracts_count: yup.number().transform(emptyStringToUndefined).integer().positive("تعداد قرارداد باید مثبت باشد.").required("تعداد قرارداد الزامی است."),
 });

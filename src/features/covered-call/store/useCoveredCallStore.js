@@ -18,10 +18,13 @@ const useCoveredCallStore = create((set, get) => ({
         .order("trade_date", { ascending: false });
 
       if (error) throw error;
-      set({ positions: data || [], isLoading: false });
+      const positionsData = data || [];
+      set({ positions: positionsData, isLoading: false });
+      return positionsData;
     } catch (error) {
       showErrorAlert("خطا در دریافت اطلاعات کاورد کال.");
       set({ error: error.message, isLoading: false });
+      return [];
     }
   },
 
@@ -94,10 +97,10 @@ const useCoveredCallStore = create((set, get) => ({
     try {
       if (resolveData.status === 'ASSIGNED') {
         const totalShares = contractsToClose * originalPosition.shares_per_contract;
-        const strikePrice = Number(originalPosition.strike_price).toLocaleString('fa-IR');
+        const strikePrice = Number(originalPosition.strike_price);
         
-        const readableNote = `اعمال اختیار ${originalPosition.option_symbol}: فروش ${totalShares.toLocaleString('fa-IR')} سهم با قیمت ${strikePrice} تومان`;
-        const technicalNote = `[ref_cc:${id}]`;
+        // --- تغییر کلیدی در این بخش اعمال شده است ---
+        const readableNote = `اعمال ${contractsToClose.toLocaleString('fa-IR')} عدد اختیار ${originalPosition.option_symbol}: فروش ${totalShares.toLocaleString('fa-IR')} سهم با قیمت ${strikePrice.toLocaleString('fa-IR')} تومان`;
 
         const saleAction = {
           type: 'sell',
@@ -106,8 +109,10 @@ const useCoveredCallStore = create((set, get) => ({
           quantity: totalShares,
           price: originalPosition.strike_price,
           commission: 0,
-          notes: `${readableNote} ||| ${technicalNote}`,
+          notes: readableNote, // <-- فقط یادداشت خوانا ثبت می‌شود
         };
+        // ------------------------------------------
+
         const saleSuccess = await useStockTradesStore.getState().addAction(saleAction, true);
         if (!saleSuccess) throw new Error("فروش خودکار سهام با مشکل مواجه شد.");
       }
@@ -149,31 +154,53 @@ const useCoveredCallStore = create((set, get) => ({
     }
   },
   
-  reopenPosition: async (position) => {
+  reopenPosition: async (positionToReopen) => {
     set({ isLoading: true });
     try {
-      if (position.status === 'ASSIGNED') {
-        const noteToFind = `[ref_cc:${position.id}]`;
+      const { underlying_symbol: underlyingSymbol } = positionToReopen;
+      const allCoveredCallPositions = get().positions;
+
+      const sharesToCoverReopen = positionToReopen.contracts_count * positionToReopen.shares_per_contract;
+      const otherOpenPositions = allCoveredCallPositions.filter(p => p.status === 'OPEN' && p.id !== positionToReopen.id && p.underlying_symbol === underlyingSymbol);
+      const requiredSharesForOthers = otherOpenPositions.reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
+      
+      const currentHoldings = useStockTradesStore.getState().calculateCurrentHolding(underlyingSymbol);
+      const freeShares = currentHoldings - requiredSharesForOthers;
+
+      if (sharesToCoverReopen > freeShares) {
+        showErrorAlert("بازگشایی امکان‌پذیر نیست", `برای بازگشایی این پوزیشن به ${sharesToCoverReopen.toLocaleString()} سهم آزاد نیاز دارید، اما تنها ${Math.floor(freeShares).toLocaleString()} سهم آزاد موجود است.`);
+        set({ isLoading: false });
+        return false;
+      }
+
+      if (positionToReopen.status === 'ASSIGNED') {
         const stockActions = useStockTradesStore.getState().actions;
-        const linkedSaleAction = stockActions.find(a => a.notes && a.notes.includes(noteToFind));
+        const readableNotePattern = `اعمال ${positionToReopen.contracts_count.toLocaleString('fa-IR')} عدد اختیار ${positionToReopen.option_symbol}`;
+        const linkedSaleAction = stockActions.find(a => a.notes && a.notes.startsWith(readableNotePattern));
         
         if (linkedSaleAction) {
-          const deleteSuccess = await useStockTradesStore.getState().deleteAction(linkedSaleAction.id);
+          const deleteSuccess = await useStockTradesStore.getState().deleteAction(linkedSaleAction.id, true);
           if (!deleteSuccess) throw new Error("حذف رویداد فروش مرتبط با این معامله با مشکل مواجه شد.");
         }
       }
 
-      const updatePayload = {
-        status: 'OPEN',
-        closing_date: null,
-        closing_price_per_share: null,
-        closing_commission: null,
-      };
+      const matchingOpenPosition = allCoveredCallPositions.find(p => p.status === 'OPEN' && p.option_symbol === positionToReopen.option_symbol && p.id !== positionToReopen.id);
 
-      const { error } = await supabase.from("covered_calls").update(updatePayload).eq("id", position.id);
-      if(error) throw error;
+      if (matchingOpenPosition) {
+        const newContractsCount = matchingOpenPosition.contracts_count + positionToReopen.contracts_count;
+        const { error: updateError } = await supabase.from("covered_calls").update({ contracts_count: newContractsCount }).eq("id", matchingOpenPosition.id);
+        if (updateError) throw updateError;
+
+        const { error: deleteError } = await supabase.from("covered_calls").delete().eq("id", positionToReopen.id);
+        if (deleteError) throw deleteError;
+      } else {
+        const updatePayload = { status: 'OPEN', closing_date: null, closing_price_per_share: null, closing_commission: null };
+        const { error: reopenError } = await supabase.from("covered_calls").update(updatePayload).eq("id", positionToReopen.id);
+        if (reopenError) throw reopenError;
+      }
 
       await get().fetchPositions();
+      await useStockTradesStore.getState().fetchActions();
       showSuccessToast("پوزیشن با موفقیت بازگشایی شد.");
       return true;
     } catch (error) {

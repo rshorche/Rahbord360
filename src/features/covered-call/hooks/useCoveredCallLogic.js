@@ -18,7 +18,7 @@ export const useCoveredCallLogic = () => {
     reopenPosition,
   } = useCoveredCallStore();
   const { priceHistory } = usePriceHistoryStore();
-  const { actions: portfolioActions, addAction: addStockAction, deleteAction: deleteStockAction } = useStockTradesStore();
+  const { actions: portfolioActions } = useStockTradesStore();
 
   const [activeTab, setActiveTab] = useState("open");
   const [modal, setModal] = useState({ type: null, data: null });
@@ -39,6 +39,15 @@ export const useCoveredCallLogic = () => {
     const pricesForCalc = Array.from(priceHistory.values());
     return processPortfolio(portfolioActions, pricesForCalc).openPositions;
   }, [portfolioActions, priceHistory]);
+
+  // --- محاسبات جدید برای کارت‌ها ---
+  const summaryMetrics = useMemo(() => {
+    const totalPremiumOpen = openPositions.reduce((sum, p) => sum + p.net_premium, 0);
+    const totalCapitalInvolved = openPositions.reduce((sum, p) => sum + p.capital_involved, 0);
+    const totalRealizedPL = historyPositions.reduce((sum, p) => sum + p.realized_pl, 0);
+    return { totalPremiumOpen, totalCapitalInvolved, totalRealizedPL };
+  }, [openPositions, historyPositions]);
+  // ---------------------------------
 
   const openModal = useCallback((type, data = null) => setModal({ type, data }), []);
   const closeModal = useCallback(() => setModal({ type: null, data: null }), []);
@@ -89,21 +98,10 @@ export const useCoveredCallLogic = () => {
   const handleReopenPosition = useCallback(async (position) => {
     const confirmed = await showConfirmAlert("بازگشایی پوزیشن", "آیا مطمئن هستید؟ با این کار، رویدادهای مالی مرتبط (مانند فروش سهام) حذف شده و پوزیشن به حالت باز برمی‌گردد.");
     if (confirmed) {
-      if (position.status === 'ASSIGNED') {
-        const noteToFind = `cc_assignment_id:${position.id}:${position.contracts_count}`;
-        const linkedSaleAction = portfolioActions.find(a => a.notes === noteToFind);
-        if (linkedSaleAction) {
-          const deleteSuccess = await deleteStockAction(linkedSaleAction.id);
-          if (!deleteSuccess) {
-            showErrorAlert("خطا", "حذف رویداد فروش مرتبط با این معامله با مشکل مواجه شد.");
-            return;
-          }
-        }
-      }
-      const success = await reopenPosition(position);
-      if(success) closeModal();
+      await reopenPosition(position);
+      closeModal();
     }
-  }, [reopenPosition, closeModal, portfolioActions, deleteStockAction]);
+  }, [reopenPosition, closeModal]);
 
   const handleDeletePosition = useCallback(async (position) => {
       const confirmed = await showConfirmAlert("حذف معامله", "آیا از حذف این معامله کاورد کال مطمئن هستید؟");
@@ -120,6 +118,7 @@ export const useCoveredCallLogic = () => {
     openPositions,
     historyPositions,
     portfolioOpenPositions,
+    summaryMetrics, // <-- ارسال محاسبات به صفحه
     modal,
     openModal,
     closeModal,
