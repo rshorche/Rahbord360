@@ -1,19 +1,23 @@
-import { Link } from "react-router-dom"; 
+import Header from "../components/Header";
+import HeroSection from "../components/HeroSection";
+import FeaturesSection from "../components/FeaturesSection";
+import HowItWorksSection from "../components/HowItWorksSection";
+import TestimonialSection from "../components/TestimonialSection";
+import FinalCTASection from "../components/FinalCTASection";
+import Footer from "../components/Footer";
 
 export default function HomePage() {
   return (
-    <div className="p-4 sm:p-6 text-center">
-      <h1 className="text-3xl font-bold text-content-800">
-        به راهبرد 360 خوش آمدید!
-      </h1>
-      <p className="mt-4 text-lg text-content-700">
-        ابزاری قدرتمند برای مدیریت و تحلیل معاملات بورسی شما.
-      </p>
-      <Link
-        to="/dashboard" 
-        className="mt-6 inline-block bg-primary-500 hover:bg-primary-600 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300">
-        ورود به داشبورد
-      </Link>
-    </div>
+    <>
+      <Header />
+      <main>
+        <HeroSection />
+        <FeaturesSection />
+        <HowItWorksSection />
+        <TestimonialSection />
+        <FinalCTASection />
+      </main>
+      <Footer />
+    </>
   );
 }
