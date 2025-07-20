@@ -18,12 +18,13 @@ export default function Sidebar({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 right-0 z-50 bg-white shadow-xl transform overflow-hidden",
+        "fixed inset-y-0 right-0 z-50 bg-white shadow-xl transform",
         "flex flex-col",
         "transition-all duration-300 ease-in-out",
         isOpen ? "translate-x-0" : "translate-x-full",
-        "lg:relative lg:translate-x-0",
-        isCollapsed ? "lg:w-20" : "lg:w-64"
+        "md:sticky md:top-0 md:h-screen md:translate-x-0",
+        // --- YOUR CORRECTED CODE ---
+        isCollapsed ? "w-20" : "w-64"
       )}
     >
       <div className="flex items-center justify-between px-4 h-16 border-b border-gray-200 flex-shrink-0">
@@ -32,13 +33,13 @@ export default function Sidebar({
         </Link>
         <button
           onClick={closeSidebar}
-          className="lg:hidden p-2 rounded-full text-gray-500 hover:bg-gray-100"
+          className="md:hidden p-2 rounded-full text-gray-500 hover:bg-gray-100"
         >
           <X size={24} />
         </button>
       </div>
 
-      <nav className="flex-grow p-2">
+      <nav className="flex-grow p-2 overflow-y-auto">
         <ul>
           {navLinks.map((link) => (
             <li key={link.to} className="mb-2">
@@ -65,7 +66,7 @@ export default function Sidebar({
         </ul>
       </nav>
 
-      <div className="p-2 mt-auto">
+      <div className="p-2 mt-auto flex-shrink-0">
         <button
           onClick={logOut}
           className={cn(
@@ -79,7 +80,7 @@ export default function Sidebar({
         </button>
       </div>
 
-      <div className="p-4 border-t border-gray-200 hidden lg:flex justify-end">
+      <div className="p-4 border-t border-gray-200 hidden md:flex justify-end flex-shrink-0">
         <Button
           variant="outline"
           size="icon"
