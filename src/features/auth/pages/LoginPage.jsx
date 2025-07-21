@@ -1,10 +1,20 @@
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import AuthForm from "../components/AuthForm";
 import useAuthStore from "../store/useAuthStore";
+import { showSuccessToast } from "../../../shared/utils/notifications";
 
 export default function LoginPage() {
   const { logIn, isLoading } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.message) {
+      showSuccessToast(location.state.message);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, navigate, location.pathname]);
 
   const handleLogin = async (data) => {
     const success = await logIn(data);
@@ -21,7 +31,7 @@ export default function LoginPage() {
       <AuthForm onSubmit={handleLogin} isLoading={isLoading} />
       <div className="text-center text-sm text-content-600 mt-6 space-y-2">
         <p>
-          حساب کاربری ندارید؟{" "}
+          حساب کاربری ندارید؟
           <Link to="/auth/signup" className="font-medium text-primary-600 hover:underline">
             ثبت نام کنید
           </Link>

@@ -1,16 +1,22 @@
 import { create } from "zustand";
 import { supabase } from "../../../shared/services/supabase";
-import { showErrorAlert, showInfoAlert, showSuccessToast } from "../../../shared/utils/notifications";
+import { showErrorAlert, showInfoAlert } from "../../../shared/utils/notifications"; // showSuccessToast was removed
 
 const useAuthStore = create((set) => ({
   session: null,
   isLoading: false,
   sessionLoading: true,
-  authEvent: null,
+  isPasswordRecovery: false,
 
   setSession: (session) => set({ session }),
   setSessionLoading: (isLoading) => set({ sessionLoading: isLoading }),
-  setAuthEvent: (event) => set({ authEvent: event }),
+  setAuthEvent: (event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      set({ isPasswordRecovery: true });
+    } else {
+      set({ isPasswordRecovery: false });
+    }
+  },
 
   logIn: async ({ email, password }) => {
     set({ isLoading: true });
@@ -32,11 +38,12 @@ const useAuthStore = create((set) => ({
   signUp: async ({ email, password }) => {
     set({ isLoading: true });
     try {
-      const { error } = await supabase.auth.signUp({
+      // Use a different name for the error variable to avoid conflict
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
       });
-      if (error) throw error;
+      if (signUpError) throw signUpError;
       showInfoAlert("ثبت نام موفق", "ایمیل تایید برای شما ارسال شد. لطفاً پوشه Spam خود را نیز بررسی کنید.");
       set({ isLoading: false });
       return true;
@@ -69,7 +76,7 @@ const useAuthStore = create((set) => ({
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      set({ isLoading: false });
+      set({ isLoading: false, isPasswordRecovery: false });
       return true;
     } catch (error) {
       showErrorAlert("خطا در به‌روزرسانی رمز عبور", "لینک بازیابی شما ممکن است منقضی شده باشد. لطفاً دوباره تلاش کنید.");
@@ -80,9 +87,9 @@ const useAuthStore = create((set) => ({
 
   logOut: async () => {
     set({ isLoading: true });
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      showErrorAlert("خطا در خروج از حساب کاربری", error.message);
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      showErrorAlert("خطا در خروج از حساب کاربری", signOutError.message);
     }
     set({ session: null, isLoading: false });
   },

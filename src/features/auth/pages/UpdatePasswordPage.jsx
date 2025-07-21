@@ -4,14 +4,13 @@ import { updatePasswordSchema } from "../utils/authValidation";
 import TextInput from "../../../shared/components/ui/forms/TextInput";
 import Button from "../../../shared/components/ui/Button";
 import { Link, useNavigate } from "react-router-dom";
-import { showSuccessToast } from "../../../shared/utils/notifications";
 import useAuthStore from "../store/useAuthStore";
 import LoadingSpinner from "../../../shared/components/ui/LoadingSpinner";
 
 export default function UpdatePasswordPage() {
   const navigate = useNavigate();
-  const { updatePassword, isLoading, session, sessionLoading, authEvent } = useAuthStore();
-  
+  const { updatePassword, isLoading, sessionLoading, isPasswordRecovery } = useAuthStore();
+
   const methods = useForm({
     resolver: yupResolver(updatePasswordSchema),
   });
@@ -19,20 +18,19 @@ export default function UpdatePasswordPage() {
   const handleUpdatePassword = async (data) => {
     const success = await updatePassword(data.password);
     if (success) {
-      showSuccessToast("رمز عبور شما با موفقیت به‌روزرسانی شد. لطفاً وارد شوید.");
-      navigate("/auth/login");
+      navigate("/auth/login", { state: { message: "رمز عبور شما با موفقیت به‌روزرسانی شد. لطفاً وارد شوید." } });
     }
   };
 
   if (sessionLoading) {
     return (
-        <div className="flex items-center justify-center h-screen">
-            <LoadingSpinner text="در حال بررسی لینک بازیابی..." />
-        </div>
+      <div className="flex items-center justify-center h-screen">
+        <LoadingSpinner text="در حال بررسی لینک بازیابی..." />
+      </div>
     );
   }
 
-  if (authEvent === 'SIGNED_IN' || !session) {
+  if (!isPasswordRecovery) {
     return (
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full text-center">
         <h2 className="text-xl font-bold text-danger-700 mb-4">لینک نامعتبر یا منقضی شده</h2>
