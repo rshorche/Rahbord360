@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react"; // Import useCallback
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { optionsTradeSchema } from "../utils/schemas";
@@ -111,7 +111,7 @@ export default function OptionsForm({
     }
   }, [initialData, reset]);
 
-  const filterSymbols = (query, setResults) => {
+  const filterSymbols = useCallback((query, setResults) => {
     if (query.length > 1) {
       const normalizedQuery = normalizePersianString(query);
       const results = allSymbols.filter((s) => normalizePersianString(s.l18).includes(normalizedQuery) || normalizePersianString(s.l30).includes(normalizedQuery)).slice(0, 10);
@@ -119,7 +119,7 @@ export default function OptionsForm({
     } else {
       setResults([]);
     }
-  };
+  }, [allSymbols]);
 
   useEffect(() => {
     if (isUnderlyingFocused) {
@@ -127,7 +127,7 @@ export default function OptionsForm({
     } else {
       setUnderlyingResults([]);
     }
-  }, [underlyingQuery, isUnderlyingFocused, allSymbols]);
+  }, [underlyingQuery, isUnderlyingFocused, filterSymbols]); // <-- filterSymbols added
 
   useEffect(() => {
     if (isOptionFocused) {
@@ -135,7 +135,7 @@ export default function OptionsForm({
     } else {
       setOptionResults([]);
     }
-  }, [optionQuery, isOptionFocused, allSymbols]);
+  }, [optionQuery, isOptionFocused, filterSymbols]); // <-- filterSymbols added
 
   const handleSelectSymbol = (symbol, fieldName, setQuery, setFocus) => {
     setQuery(symbol.l18);

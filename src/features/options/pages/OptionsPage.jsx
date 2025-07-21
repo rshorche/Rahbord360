@@ -7,9 +7,19 @@ import Button from "../../../shared/components/ui/Button";
 import Card from "../../../shared/components/ui/Card";
 import OptionsForm from "../components/OptionsForm";
 import ManageOptionForm from "../components/ManageOptionForm";
-import { PlusCircle, Edit, Trash2, CheckSquare, XCircle, ShoppingCart, TrendingUp, Wallet, History, Eye, RotateCcw } from "lucide-react";
+import { PlusCircle, Edit, Trash2, CheckSquare, ShoppingCart, TrendingUp, Wallet, History, RotateCcw, DollarSign, PieChart, BadgePercent, Hash } from "lucide-react";
 import { cn } from "../../../shared/utils/cn";
 import { DateObject } from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
+import { formatCurrency, formatDisplayNumber } from "../../../shared/utils/formatters";
+
+const tradeTypeMap = {
+    'buy_to_open': 'خرید برای باز کردن',
+    'sell_to_open': 'فروش برای باز کردن',
+    'buy_to_close': 'خرید برای بستن',
+    'sell_to_close': 'فروش برای بستن',
+};
 
 const OpenTradeActions = ({ onEdit, onDelete }) => (
   <div className="flex items-center justify-center h-full space-x-1 rtl:space-x-reverse">
@@ -31,6 +41,14 @@ const HistoryTradeActions = ({ onReopen, onDelete }) => (
       <Trash2 size={16} />
     </Button>
   </div>
+);
+
+const DetailStat = ({ icon, title, value, colorClass = "text-content-800" }) => (
+    <div className="flex flex-col items-center justify-center rounded-lg bg-content-100/50 p-3 text-center">
+      {icon}
+      <p className="mt-1 text-xs text-content-600">{title}</p>
+      <p className={`mt-1 text-lg font-bold ${colorClass}`}>{value}</p>
+    </div>
 );
 
 export default function OptionsPage() {
@@ -56,10 +74,10 @@ export default function OptionsPage() {
   const historyColumnDefs = useMemo(() => getHistoryOptionsColumnDefs(trade => openModal("history-details", trade)), [openModal]);
   
   const getDetailColumnDefs = useCallback(() => [
-      { headerName: 'نوع معامله', field: 'trade_type', width: 150 },
-      { headerName: 'تعداد قرارداد', field: 'contracts_count', width: 130 },
+      { headerName: 'نوع معامله', field: 'trade_type', width: 150, valueFormatter: (p) => tradeTypeMap[p.value] || p.value },
+      { headerName: 'تعداد قرارداد', field: 'contracts_count', width: 130, valueFormatter: (p) => p.value ? p.value.toLocaleString('fa-IR') : '-' },
       { headerName: 'پرمیوم', field: 'premium', width: 120, valueFormatter: (p) => p.value ? p.value.toLocaleString('fa-IR') : '-' },
-      { headerName: 'تاریخ', field: 'trade_date', width: 130, valueFormatter: (p) => p.value ? new DateObject({ date: p.value }).format("YYYY/MM/DD") : '-' },
+      { headerName: 'تاریخ', field: 'trade_date', width: 130, valueFormatter: (p) => p.value ? new DateObject({ date: new Date(p.value), calendar: persian, locale: persian_fa }).format("YYYY/MM/DD") : '-' },
       { headerName: 'یادداشت', field: 'notes', flex: 1 },
       { 
         headerName: 'عملیات',
@@ -69,10 +87,10 @@ export default function OptionsPage() {
   ], [openModal, handleDeleteSingleTrade]);
   
   const getHistoryDetailColumnDefs = useCallback(() => [
-      { headerName: 'نوع معامله', field: 'trade_type', width: 150 },
-      { headerName: 'تعداد قرارداد', field: 'contracts_count', width: 130 },
+      { headerName: 'نوع معامله', field: 'trade_type', width: 150, valueFormatter: (p) => tradeTypeMap[p.value] || p.value },
+      { headerName: 'تعداد قرارداد', field: 'contracts_count', width: 130, valueFormatter: (p) => p.value ? p.value.toLocaleString('fa-IR') : '-' },
       { headerName: 'وضعیت', field: 'status', width: 120 },
-      { headerName: 'تاریخ', field: 'trade_date', width: 130, valueFormatter: (p) => p.value ? new DateObject({ date: p.value }).format("YYYY/MM/DD") : '-' },
+      { headerName: 'تاریخ', field: 'trade_date', width: 130, valueFormatter: (p) => p.value ? new DateObject({ date: new Date(p.value), calendar: persian, locale: persian_fa }).format("YYYY/MM/DD") : '-' },
       { 
         headerName: 'عملیات',
         width: 100,
@@ -95,7 +113,7 @@ export default function OptionsPage() {
         <Button variant="primary" onClick={() => openModal("add")} icon={<PlusCircle size={20} />}>ثبت معامله جدید</Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <Card title="ارزش کل آپشن‌ها (باز)" amount={summaryMetrics.totalCurrentValue} color="primary" icon={<Wallet size={24} />}/>
         <Card title="هزینه کل (باز)" amount={summaryMetrics.totalCostBasis} color="default" icon={<ShoppingCart size={24} />}/>
         <Card title="سود/زیان باز" amount={summaryMetrics.totalUnrealizedPL} color={summaryMetrics.totalUnrealizedPL >= 0 ? "success" : "danger"} icon={<TrendingUp size={24} />}/>
@@ -126,16 +144,54 @@ export default function OptionsPage() {
             <Button variant="danger" onClick={() => handleDeleteAllForSymbol(modal.data.option_symbol)} icon={<Trash2 size={18} />}>حذف کلی پوزیشن</Button>
         </div>
       </Modal>
-       <Modal isOpen={modal.type === "details"} onClose={closeModal} title={`تاریخچه معاملات: ${modal.data?.option_symbol}`} className="max-w-4xl">
-        <div className="max-h-[70vh] overflow-y-auto">
-          <AgGridTable rowData={modal.data?.history || []} columnDefs={getDetailColumnDefs()} domLayout="autoHeight" />
-        </div>
-      </Modal>
-      <Modal isOpen={modal.type === "history-details"} onClose={closeModal} title={`تاریخچه معاملات: ${modal.data?.option_symbol}`} className="max-w-4xl">
-        <div className="max-h-[70vh] overflow-y-auto">
-          <AgGridTable rowData={modal.data?.history || []} columnDefs={getHistoryDetailColumnDefs()} domLayout="autoHeight" />
-        </div>
-      </Modal>
+
+      {modal.data && (
+        <>
+            <Modal isOpen={modal.type === "details"} onClose={closeModal} title={`تاریخچه معاملات: ${modal.data?.option_symbol}`} className="max-w-4xl">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 border-b border-content-200 pb-6">
+                    <DetailStat
+                        icon={<TrendingUp size={24} className="text-primary-600" />}
+                        title="سود/زیان باز"
+                        value={formatCurrency(modal.data.unrealized_pl)}
+                        colorClass={modal.data.unrealized_pl >= 0 ? "text-success-600" : "text-danger-600"}
+                    />
+                    <DetailStat
+                        icon={<DollarSign size={24} className="text-primary-600" />}
+                        title="سود/زیان محقق شده"
+                        value={formatCurrency(modal.data.realized_pl)}
+                        colorClass={modal.data.realized_pl >= 0 ? "text-success-600" : "text-danger-600"}
+                    />
+                    <DetailStat
+                        icon={<Wallet size={24} className="text-content-500" />}
+                        title="هزینه کل"
+                        value={formatCurrency(modal.data.cost_basis)}
+                    />
+                    <DetailStat
+                        icon={<Hash size={24} className="text-content-500" />}
+                        title="تعداد قرارداد خالص"
+                        value={formatDisplayNumber(modal.data.contracts_count, 0)}
+                    />
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto">
+                    <AgGridTable rowData={modal.data?.history || []} columnDefs={getDetailColumnDefs()} domLayout="autoHeight" />
+                </div>
+            </Modal>
+            
+            <Modal isOpen={modal.type === "history-details"} onClose={closeModal} title={`تاریخچه معاملات: ${modal.data?.option_symbol}`} className="max-w-4xl">
+                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 border-b border-content-200 pb-6">
+                    <DetailStat
+                        icon={<DollarSign size={24} className="text-primary-600" />}
+                        title="سود/زیان محقق شده"
+                        value={formatCurrency(modal.data.realized_pl)}
+                        colorClass={modal.data.realized_pl >= 0 ? "text-success-600" : "text-danger-600"}
+                    />
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto">
+                    <AgGridTable rowData={modal.data?.history || []} columnDefs={getHistoryDetailColumnDefs()} domLayout="autoHeight" />
+                </div>
+            </Modal>
+        </>
+      )}
     </div>
   );
 }
