@@ -21,7 +21,6 @@ export const showErrorAlert = (title, text = '') => {
   });
 };
 
-// --- این تابع را اضافه کنید ---
 export const showInfoAlert = (title, text = '') => {
   Swal.fire({
     icon: 'info',

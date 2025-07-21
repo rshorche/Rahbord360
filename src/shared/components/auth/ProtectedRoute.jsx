@@ -3,7 +3,6 @@ import useAuthStore from "../../../features/auth/store/useAuthStore";
 import LoadingSpinner from "../ui/LoadingSpinner";
 
 export default function ProtectedRoute({ children }) {
-  // Read session state DIRECTLY from the central store
   const { session, sessionLoading } = useAuthStore();
 
   if (sessionLoading) {

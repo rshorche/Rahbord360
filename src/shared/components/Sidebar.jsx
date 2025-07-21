@@ -1,4 +1,3 @@
-import React from "react";
 import { NavLink, Link } from "react-router-dom";
 import { X, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -23,7 +22,6 @@ export default function Sidebar({
         "transition-all duration-300 ease-in-out",
         isOpen ? "translate-x-0" : "translate-x-full",
         "md:sticky md:top-0 md:h-screen md:translate-x-0",
-        // --- YOUR CORRECTED CODE ---
         isCollapsed ? "w-20" : "w-64"
       )}
     >
