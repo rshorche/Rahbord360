@@ -23,7 +23,7 @@ export default function AddPremiumForm({
       : {
           date: new Date(),
           symbol: "",
-          premium_type: "bonus_shares", // انتخاب پیش‌فرض
+          premium_type: "bonus_shares",
           quantity: "",
           amount: "",
           type: "premium",

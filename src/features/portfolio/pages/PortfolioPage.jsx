@@ -1,15 +1,24 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import useStockTradesStore from "../store/useStockTradesStore";
 import usePriceHistoryStore from "../../../shared/store/usePriceHistoryStore";
 import { processPortfolio } from "../utils/portfolioCalculator.js";
 import { getMasterColumnDefs, getClosedColumnDefs, getDetailColumnDefs } from "../utils/portfolioTableConfig.jsx";
 import { showConfirmAlert } from "../../../shared/utils/notifications";
+import { formatCurrency, formatDisplayNumber } from "../../../shared/utils/formatters";
 import AgGridTable from "../../../shared/components/ui/AgGridTable";
 import Modal from "../../../shared/components/ui/Modal";
 import AddActionModal from "../components/AddActionModal";
 import Button from "../../../shared/components/ui/Button";
 import Card from "../../../shared/components/ui/Card";
-import { PlusCircle, Wallet, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { PlusCircle, Wallet, TrendingUp, TrendingDown, DollarSign, PieChart, BadgePercent, Hash } from "lucide-react";
+
+const DetailStat = ({ icon, title, value, colorClass = "text-content-800" }) => (
+  <div className="flex flex-col items-center justify-center rounded-lg bg-content-100/50 p-3 text-center">
+    {icon}
+    <p className="mt-1 text-xs text-content-600">{title}</p>
+    <p className={`mt-1 text-lg font-bold ${colorClass}`}>{value}</p>
+  </div>
+);
 
 export default function PortfolioPage() {
   const { actions, deleteAction, isLoading: isActionsLoading } = useStockTradesStore();
@@ -19,7 +28,7 @@ export default function PortfolioPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingAction, setEditingAction] = useState(null);
-  const [detailData, setDetailData] = useState({ symbol: "", trades: [] });
+  const [detailData, setDetailData] = useState(null); 
 
   const { openPositions, closedPositions } = useMemo(() => {
     const latestPricesForCalculator = Array.from(priceHistory.values());
@@ -45,7 +54,7 @@ export default function PortfolioPage() {
   }, []);
 
   const handleOpenDetailModal = useCallback((summaryRowData) => {
-    setDetailData({ symbol: summaryRowData.symbol, trades: summaryRowData.detailData });
+    setDetailData(summaryRowData);
     setIsDetailModalOpen(true);
   }, []);
   
@@ -64,10 +73,20 @@ export default function PortfolioPage() {
     if (confirmed) {
       const success = await deleteAction(id);
       if (success) {
-        handleCloseDetailModal();
+        const deletedAction = actions.find(a => a.id === id);
+        if (deletedAction && detailData && deletedAction.symbol === detailData.symbol) {
+            const latestPricesForCalculator = Array.from(priceHistory.values());
+            const { openPositions, closedPositions } = processPortfolio(actions.filter(a => a.id !== id), latestPricesForCalculator);
+            const updatedPositionData = [...openPositions, ...closedPositions].find(p => p.symbol === deletedAction.symbol);
+            if(updatedPositionData) {
+                setDetailData(updatedPositionData);
+            } else {
+                handleCloseDetailModal();
+            }
+        }
       }
     }
-  }, [deleteAction, handleCloseDetailModal]);
+  }, [deleteAction, actions, detailData, handleCloseDetailModal, priceHistory]);
 
   const masterColumnDefs = useMemo(() => getMasterColumnDefs(handleOpenDetailModal), [handleOpenDetailModal]);
   const closedColumnDefs = useMemo(() => getClosedColumnDefs(handleOpenDetailModal), [handleOpenDetailModal]);
@@ -121,11 +140,38 @@ export default function PortfolioPage() {
         />
       </Modal>
       
-      <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetailModal} title={`تاریخچه رویدادهای نماد: ${detailData.symbol}`} className="max-w-4xl">
-        <div className="max-h-[70vh] overflow-y-auto">
-          <AgGridTable rowData={detailData.trades} columnDefs={detailColumnDefs} domLayout="autoHeight" />
-        </div>
-      </Modal>
+      {detailData && (
+        <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetailModal} title={`تاریخچه و تحلیل نماد: ${detailData.symbol}`} className="max-w-4xl">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 border-b border-content-200 pb-6">
+                <DetailStat
+                    icon={<DollarSign size={24} className="text-primary-600" />}
+                    title="سود/زیان نهایی"
+                    value={formatCurrency(detailData.totalPL)}
+                    colorClass={detailData.totalPL >= 0 ? "text-success-600" : "text-danger-600"}
+                />
+                <DetailStat
+                    icon={<BadgePercent size={24} className="text-primary-600" />}
+                    title="٪ بازده نهایی"
+                    value={formatDisplayNumber(detailData.percentagePL, 2, "%")}
+                    colorClass={detailData.percentagePL >= 0 ? "text-success-600" : "text-danger-600"}
+                />
+                 <DetailStat
+                    icon={<PieChart size={24} className="text-content-500" />}
+                    title="ارزش روز دارایی"
+                    value={formatCurrency(detailData.currentValue)}
+                />
+                 <DetailStat
+                    icon={<Hash size={24} className="text-content-500" />}
+                    title="تعداد فعلی"
+                    value={formatDisplayNumber(detailData.remainingQty, 0)}
+                />
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto">
+                <AgGridTable rowData={detailData.detailData} columnDefs={detailColumnDefs} domLayout="autoHeight" />
+            </div>
+        </Modal>
+      )}
     </div>
   );
 }

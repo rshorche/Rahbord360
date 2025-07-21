@@ -6,7 +6,15 @@ export const processPortfolio = (actions, allSymbolsData) => {
     if (s.symbol && s.price != null) symbolLatestPrices.set(s.symbol, s.price / 10);
   });
 
-  const sortedActions = [...actions].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const sortedActions = [...actions].sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    if (dateA < dateB) return -1;
+    if (dateA > dateB) return 1;
+    const createdAtA = new Date(a.created_at);
+    const createdAtB = new Date(b.created_at);
+    return createdAtA - createdAtB;
+  });
 
   const createNewPosition = (symbol) => ({
     symbol: symbol, remainingQty: 0, totalBuyCost: 0, totalRealizedPL: 0, totalDividend: 0, totalRightsSellRevenue: 0, detailData: [], firstBuyDate: null, lastSellDate: null, totalBoughtQty: 0, totalSoldQty: 0, totalBoughtValue: 0, totalSoldValue: 0,
@@ -31,7 +39,7 @@ export const processPortfolio = (actions, allSymbolsData) => {
 
     switch (action.type) {
       case 'buy':
-      case 'rights_exercise':
+      case 'rights_exercise': { 
         if (!position.firstBuyDate || position.remainingQty < 0.001) {
             position.firstBuyDate = action.date;
             position.lastSellDate = null;
@@ -43,8 +51,9 @@ export const processPortfolio = (actions, allSymbolsData) => {
         position.totalBoughtValue += buyCost;
         if (action.type === 'rights_exercise') position.rightsQty += quantity;
         break;
+      } 
         
-      case 'sell':
+      case 'sell': { 
         if (position.remainingQty > 0) {
           const avgCostPerShare = position.totalBuyCost / position.remainingQty;
           const costOfSoldShares = quantity * avgCostPerShare;
@@ -55,14 +64,14 @@ export const processPortfolio = (actions, allSymbolsData) => {
           position.totalSoldQty += quantity;
           position.totalSoldValue += sellRevenue;
           
-          // --- تغییر کلیدی و نهایی برای حل مشکل ---
           if (position.remainingQty < 0.001) {
               position.lastSellDate = action.date;
-              position.remainingQty = 0; // اطمینان از صفر شدن
-              position.totalBuyCost = 0; // اطمینان از صفر شدن
+              position.remainingQty = 0;
+              position.totalBuyCost = 0;
           }
         }
         break;
+      } 
 
       case 'dividend':
         position.totalDividend += amount;
@@ -87,7 +96,7 @@ export const processPortfolio = (actions, allSymbolsData) => {
         position.totalRightsSellRevenue += amount;
         break;
 
-      case 'revaluation':
+      case 'revaluation': {
         const currentQty = position.remainingQty;
         const multiplier = 1 + (Number(action.revaluation_percentage) / 100);
         const newQty = Math.round(currentQty * multiplier);
@@ -96,6 +105,7 @@ export const processPortfolio = (actions, allSymbolsData) => {
         position.totalBoughtQty += addedQty;
         position.revaluationQtyIncrease += addedQty;
         break;
+      } 
     }
   });
 

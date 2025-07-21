@@ -24,7 +24,7 @@ export default function AddBonusForm({
           date: new Date(),
           symbol: "",
           quantity: "",
-          type: "bonus", // نوع رویداد به صورت ثابت تعریف می‌شود
+          type: "bonus", 
         },
   });
 

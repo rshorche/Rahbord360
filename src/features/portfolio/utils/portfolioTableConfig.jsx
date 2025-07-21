@@ -15,7 +15,6 @@ const formatDateToJalali = (params) => {
 const formatNoteForDisplay = (params) => {
     const originalNote = params.value;
     if (!originalNote) return '';
-    // This will remove the technical reference part, e.g., " [ref_cc:...]"
     return originalNote.replace(/\s*\[ref_cc:.*\]$/, '').trim();
 };
 

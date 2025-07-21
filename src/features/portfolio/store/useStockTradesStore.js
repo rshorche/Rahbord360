@@ -22,9 +22,10 @@ const useStockTradesStore = create((set, get) => ({
             return total + quantity;
           case 'premium':
             return action.premium_type === 'bonus_shares' ? total + quantity : total;
-          case 'revaluation':
+          case 'revaluation': { 
             const multiplier = 1 + (Number(action.revaluation_percentage) / 100);
             return Math.round(total * multiplier);
+          } 
           case 'sell':
             return total - quantity;
           default:
@@ -101,7 +102,6 @@ const useStockTradesStore = create((set, get) => ({
     const actionToDelete = get().actions.find(a => a.id === id);
     if (!actionToDelete) return false;
 
-    // We only perform the check if it's a direct user action, not an internal system call (like reopening a position)
     if (!isInternalCall) {
         const { symbol } = actionToDelete;
         const currentHoldings = get().calculateCurrentHolding(symbol);
