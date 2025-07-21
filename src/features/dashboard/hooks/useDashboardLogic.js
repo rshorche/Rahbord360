@@ -17,40 +17,52 @@ export const useDashboardLogic = () => {
   const priceHistory = usePriceHistoryStore((state) => state.priceHistory);
 
   const [portfolioHistoryData, setPortfolioHistoryData] = useState([]);
+  const [dashboardSummary, setDashboardSummary] = useState({
+    totalPortfolioValue: 0,
+    totalUnrealizedPL: 0,
+    todaysPL: 0,
+    totalReturnPercent: 0,
+  });
   
   const isPortfolioLoading = useStockTradesStore((state) => state.isLoading);
   const isFundsLoading = useFundTradesStore((state) => state.isLoading);
   const isOptionsLoading = useOptionsStore((state) => state.isLoading);
   const isCoveredCallLoading = useCoveredCallStore((state) => state.isLoading);
   const isPriceHistoryLoading = usePriceHistoryStore((state) => state.isLoading);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [isDashboardDataLoading, setIsDashboardDataLoading] = useState(true);
 
-  const isLoading = isPortfolioLoading || isFundsLoading || isOptionsLoading || isCoveredCallLoading || isPriceHistoryLoading || isHistoryLoading;
+  const isStoresLoading = isPortfolioLoading || isFundsLoading || isOptionsLoading || isCoveredCallLoading || isPriceHistoryLoading;
 
   useEffect(() => {
-    const fetchPortfolioHistory = async () => {
-      setIsHistoryLoading(true);
-      const { data, error } = await supabase
-        .from('portfolio_history')
-        .select('snapshot_date, total_value, net_deposits')
-        .order('snapshot_date', { ascending: true });
+    const fetchAsyncData = async () => {
+      setIsDashboardDataLoading(true);
+      
+      const [summaryResult, historyResult] = await Promise.all([
+          supabase.from('dashboard_summary_cache').select('summary_data').single(),
+          supabase.from('portfolio_history').select('snapshot_date, total_value, net_deposits').order('snapshot_date', { ascending: true })
+      ]);
 
-      if (!error && data) {
-        setPortfolioHistoryData(data.map(item => ({
+      if (summaryResult.data) {
+        setDashboardSummary(summaryResult.data.summary_data);
+      }
+
+      if (historyResult.data) {
+        setPortfolioHistoryData(historyResult.data.map(item => ({
           date: item.snapshot_date,
           total_value: Number(item.total_value),
           net_deposits: Number(item.net_deposits)
         })));
       }
-      setIsHistoryLoading(false);
+      
+      setIsDashboardDataLoading(false);
     };
-    fetchPortfolioHistory();
+    
+    fetchAsyncData();
   }, []);
 
-  const processedData = useMemo(() => {
-    if (!portfolioActions || !fundTrades || !optionTrades || !priceHistory || !coveredCallTrades) {
+  const { assetAllocationData, topHoldings, upcomingEvents } = useMemo(() => {
+    if (isStoresLoading || !priceHistory.size) {
       return {
-        dashboardSummary: { totalPortfolioValue: 0, totalUnrealizedPL: 0, todaysPL: 0 },
         assetAllocationData: [],
         topHoldings: [],
         upcomingEvents: [],
@@ -58,22 +70,15 @@ export const useDashboardLogic = () => {
     }
 
     const pricesForCalc = Array.from(priceHistory.values());
-
     const { openPositions: portfolioOpen } = processPortfolio(portfolioActions, pricesForCalc);
-    const portfolioValue = portfolioOpen.reduce((sum, p) => sum + p.currentValue, 0);
-    const portfolioCost = portfolioOpen.reduce((sum, p) => sum + p.totalBuyCost, 0);
-
     const { openPositions: fundOpen } = processFundPositions(fundTrades, pricesForCalc);
-    const fundValue = fundOpen.reduce((sum, p) => sum + p.currentValue, 0);
-
     const { openPositions: optionOpen } = processOptionsPositions(optionTrades, priceHistory);
+
+    const portfolioValue = portfolioOpen.reduce((sum, p) => sum + p.currentValue, 0);
+    const fundValue = fundOpen.reduce((sum, p) => sum + p.currentValue, 0);
     const optionValue = optionOpen.reduce((sum, p) => sum + (p.current_value || 0), 0);
+    const total = portfolioValue + fundValue + optionValue;
 
-    const totalPortfolioValue = portfolioValue + fundValue + optionValue;
-    const totalUnrealizedPL = (portfolioValue - portfolioCost) + (fundOpen.reduce((sum, p) => sum + p.unrealizedPL, 0)) + (optionOpen.reduce((sum, p) => sum + (p.unrealized_pl || 0), 0));
-    const dashboardSummary = { totalPortfolioValue, totalUnrealizedPL, todaysPL: 0 };
-
-    const total = totalPortfolioValue;
     const assetAllocationData = total === 0 ? [] : [
       { name: 'سهام', value: portfolioValue },
       { name: 'صندوق', value: fundValue },
@@ -85,30 +90,30 @@ export const useDashboardLogic = () => {
 
     const MS_IN_DAY = 1000 * 60 * 60 * 24;
     const today = new Date();
-    today.setHours(0,0,0,0);
-    
+    today.setHours(0, 0, 0, 0);
+
     const upcomingOptions = optionOpen
-        .map(p => ({ ...p, days_to_expiration: Math.ceil((new Date(p.expiration_date) - today) / MS_IN_DAY)}))
-        .filter(p => p.days_to_expiration >= 0 && p.days_to_expiration <= 14)
-        .map(p => ({ type: 'Option', symbol: p.option_symbol, date: p.expiration_date, days_left: p.days_to_expiration }));
+      .map(p => ({ ...p, days_to_expiration: Math.ceil((new Date(p.expiration_date) - today) / MS_IN_DAY) }))
+      .filter(p => p.days_to_expiration >= 0 && p.days_to_expiration <= 14)
+      .map(p => ({ type: 'Option', symbol: p.option_symbol, date: p.expiration_date, days_left: p.days_to_expiration }));
 
     const upcomingCC = coveredCallTrades
-        .filter(p => p.status === 'OPEN')
-        .map(p => ({ ...p, days_to_expiration: Math.ceil((new Date(p.expiration_date) - today) / MS_IN_DAY)}))
-        .filter(p => p.days_to_expiration >= 0 && p.days_to_expiration <= 14)
-        .map(p => ({ type: 'Covered Call', symbol: p.option_symbol, date: p.expiration_date, days_left: p.days_to_expiration }));
+      .filter(p => p.status === 'OPEN')
+      .map(p => ({ ...p, days_to_expiration: Math.ceil((new Date(p.expiration_date) - today) / MS_IN_DAY) }))
+      .filter(p => p.days_to_expiration >= 0 && p.days_to_expiration <= 14)
+      .map(p => ({ type: 'Covered Call', symbol: p.option_symbol, date: p.expiration_date, days_left: p.days_to_expiration }));
 
-    const upcomingEvents = [...upcomingOptions, ...upcomingCC].sort((a,b) => a.days_left - b.days_left);
+    const upcomingEvents = [...upcomingOptions, ...upcomingCC].sort((a, b) => a.days_left - b.days_left);
 
-    return { dashboardSummary, assetAllocationData, topHoldings, upcomingEvents };
-  }, [portfolioActions, fundTrades, optionTrades, coveredCallTrades, priceHistory]);
+    return { assetAllocationData, topHoldings, upcomingEvents };
+  }, [isStoresLoading, priceHistory, portfolioActions, fundTrades, optionTrades, coveredCallTrades]);
 
   return {
-    isLoading,
-    dashboardSummary: processedData.dashboardSummary,
-    assetAllocationData: processedData.assetAllocationData,
-    topHoldings: processedData.topHoldings,
+    isLoading: isStoresLoading || isDashboardDataLoading,
+    dashboardSummary,
+    assetAllocationData: assetAllocationData,
+    topHoldings: topHoldings,
     portfolioHistoryData,
-    upcomingEvents: processedData.upcomingEvents,
+    upcomingEvents: upcomingEvents,
   };
 };
