@@ -20,6 +20,7 @@ export default function DashboardLayout() {
     const handleResize = () => {
       if (window.innerWidth < 768) {
         setIsSidebarOpen(false);
+        setIsCollapsed(false); // --- THIS LINE FIXES THE BUG ---
       } else {
         setIsSidebarOpen(true);
       }
@@ -45,7 +46,6 @@ export default function DashboardLayout() {
           isOpen={isSidebarOpen}
           closeSidebar={closeSidebar}
           navLinks={navigationLinks}
-          brandName="راهبرد ۳۶۰"
           isCollapsed={isCollapsed}
           toggleCollapsed={toggleCollapsed}
         />

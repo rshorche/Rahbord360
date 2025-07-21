@@ -1,3 +1,4 @@
+import React from "react";
 import { NavLink, Link } from "react-router-dom";
 import { X, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -8,7 +9,6 @@ export default function Sidebar({
   isOpen,
   closeSidebar,
   navLinks,
-  brandName,
   isCollapsed,
   toggleCollapsed,
 }) {
@@ -25,13 +25,17 @@ export default function Sidebar({
         isCollapsed ? "w-20" : "w-64"
       )}
     >
-      <div className="flex items-center justify-between px-4 h-16 border-b border-gray-200 flex-shrink-0">
-        <Link to="/dashboard" className={cn("transition-opacity duration-200", isCollapsed ? "opacity-0" : "opacity-100")}>
-            <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{brandName}</span>
+      <div className="flex items-center justify-start pr-2 pl-6 h-16 border-b border-gray-200 flex-shrink-0">
+        <Link to="/" className="flex items-center h-full">
+            {isCollapsed ? (
+                <img src="/images/logo.webp" alt="لوگو" className="max-h-20 mr-2 w-auto" />
+            ) : (
+                <img src="/images/logo-pc.webp" alt="لوگو" className="max-h-20 w-auto" />
+            )}
         </Link>
         <button
           onClick={closeSidebar}
-          className="md:hidden p-2 rounded-full text-gray-500 hover:bg-gray-100"
+          className={cn("absolute left-1 top-3 md:hidden p-2 rounded-full text-gray-500 hover:bg-gray-100", { 'hidden': isCollapsed })}
         >
           <X size={24} />
         </button>
@@ -74,7 +78,9 @@ export default function Sidebar({
           title={isCollapsed ? "خروج" : ""}
         >
           <LogOut size={24} className={!isCollapsed ? "ml-3" : ""} />
-          <span className={cn("font-medium whitespace-nowrap", isCollapsed ? "sr-only" : "")}>خروج</span>
+          <span className={cn("font-medium whitespace-nowrap", isCollapsed ? "sr-only" : "")}>
+            خروج
+          </span>
         </button>
       </div>
 

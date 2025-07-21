@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Zap } from "lucide-react";
 import useAuthStore from "../../auth/store/useAuthStore";
 import { cn } from "../../../shared/utils/cn"; 
 
@@ -29,8 +28,7 @@ export default function Header() {
       <nav className="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8" aria-label="Global">
         <div className="flex lg:flex-1">
           <Link to="/" className="-m-1.5 p-1.5 flex items-center">
-            <Zap className="h-8 w-auto text-primary-600" />
-            <span className="ml-2 font-bold text-xl text-content-800">رهبرد ۳۶۰</span>
+            <img src="/images/logo-pc.webp" alt="لوگو" className="max-h-12 w-auto" />
           </Link>
         </div>
         <div className="flex lg:flex-1 justify-end">
