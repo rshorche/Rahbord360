@@ -8,6 +8,14 @@ import TextareaInput from "../../../shared/components/ui/forms/TextareaInput";
 import SelectInput from "../../../shared/components/ui/forms/SelectInput";
 import Button from "../../../shared/components/ui/Button";
 
+const DEFAULT_VALUES = {
+  date: new Date(),
+  broker: "",
+  amount: "",
+  type: "deposit",
+  description: "",
+};
+
 export default function TransactionForm({
   onSubmit,
   initialData,
@@ -16,15 +24,9 @@ export default function TransactionForm({
   
   const methods = useForm({
     resolver: yupResolver(transactionSchema),
-    defaultValues: initialData
-      ? { ...initialData, date: new Date(initialData.date) }
-      : {
-          date: new Date(),
-          broker: "",
-          amount: "",
-          type: "deposit",
-          description: "",
-        },
+    defaultValues: isEditMode 
+      ? { ...initialData, date: new Date(initialData.date) } 
+      : DEFAULT_VALUES,
   });
 
   const {
@@ -34,12 +36,12 @@ export default function TransactionForm({
   } = methods;
 
   useEffect(() => {
-    if (initialData) {
+    if (isEditMode && initialData) {
       reset({ ...initialData, date: new Date(initialData.date) });
     } else {
-      reset({ date: new Date(), type: 'deposit', broker: '', amount: '', description: '' });
+      reset(DEFAULT_VALUES);
     }
-  }, [initialData, reset]);
+  }, [initialData, isEditMode, reset]);
 
   return (
     <FormProvider {...methods}>

@@ -13,10 +13,8 @@ export const getTransactionColumnDefs = (onEdit, onDelete) => [
     valueFormatter: (params) => {
       if (!params.value) return "";
 
-      // ابتدا رشته تاریخ میلادی را به یک شیء Date استاندارد تبدیل می‌کنیم
       const gregorianDate = new Date(params.value);
 
-      // سپس این شیء را به DateObject می‌دهیم تا به تقویم شمسی تبدیل کند
       const jalaliDate = new DateObject({
         date: gregorianDate,
         calendar: persian,
