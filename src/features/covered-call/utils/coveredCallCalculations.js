@@ -11,12 +11,14 @@ const _calculateRealizedPL = (status, netPremium, totalRequiredShares, strikePri
   switch (status) {
     case 'EXPIRED':
       return netPremium;
-    case 'ASSIGNED':
+    case 'ASSIGNED': { 
       const stockProfit = (strikePrice - underlyingCostBasis) * totalRequiredShares;
       return netPremium + stockProfit;
-    case 'CLOSED':
+    } 
+    case 'CLOSED': { 
       const closingCost = (closingPricePerShare * totalRequiredShares) + closingCommission;
       return netPremium - closingCost;
+    } 
     default:
       return 0;
   }

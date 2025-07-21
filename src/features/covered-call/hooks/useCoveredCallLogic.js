@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import useCoveredCallStore from "../store/useCoveredCallStore";
 import usePriceHistoryStore from "../../../shared/store/usePriceHistoryStore";
-import { showConfirmAlert, showErrorAlert } from "../../../shared/utils/notifications";
+import { showConfirmAlert } from "../../../shared/utils/notifications"; 
 import { calculatePositionMetrics } from "../utils/coveredCallCalculations";
 import useStockTradesStore from "../../portfolio/store/useStockTradesStore";
 import { processPortfolio } from "../../portfolio/utils/portfolioCalculator";
@@ -22,6 +22,10 @@ export const useCoveredCallLogic = () => {
 
   const [activeTab, setActiveTab] = useState("open");
   const [modal, setModal] = useState({ type: null, data: null });
+  
+  useEffect(() => {
+    fetchPositions();
+  }, [fetchPositions]);
 
   const { openPositions, historyPositions } = useMemo(() => {
     const calculatedData = positions.map(p => {
@@ -40,54 +44,26 @@ export const useCoveredCallLogic = () => {
     return processPortfolio(portfolioActions, pricesForCalc).openPositions;
   }, [portfolioActions, priceHistory]);
 
-  // --- محاسبات جدید برای کارت‌ها ---
   const summaryMetrics = useMemo(() => {
     const totalPremiumOpen = openPositions.reduce((sum, p) => sum + p.net_premium, 0);
     const totalCapitalInvolved = openPositions.reduce((sum, p) => sum + p.capital_involved, 0);
     const totalRealizedPL = historyPositions.reduce((sum, p) => sum + p.realized_pl, 0);
     return { totalPremiumOpen, totalCapitalInvolved, totalRealizedPL };
   }, [openPositions, historyPositions]);
-  // ---------------------------------
 
   const openModal = useCallback((type, data = null) => setModal({ type, data }), []);
   const closeModal = useCallback(() => setModal({ type: null, data: null }), []);
 
   const handleAddSubmit = useCallback(async (formData) => {
-    const { contracts_count, shares_per_contract, underlying_symbol } = formData;
-    const requiredShares = (Number(contracts_count) || 0) * (Number(shares_per_contract) || 1000);
-    const currentPortfolioPosition = portfolioOpenPositions.find(p => p.symbol === underlying_symbol);
-    const availableSharesInPortfolio = currentPortfolioPosition ? currentPortfolioPosition.remainingQty : 0;
-    const sharesCoveringOtherPositions = openPositions
-      .filter(p => p.underlying_symbol === underlying_symbol)
-      .reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
-    const trulyAvailableShares = availableSharesInPortfolio - sharesCoveringOtherPositions;
-
-    if (requiredShares > trulyAvailableShares) {
-      showErrorAlert("خطا: سهام آزاد کافی نیست", `شما برای پوشش این معامله به ${requiredShares.toLocaleString()} سهم نیاز دارید، اما فقط ${Math.floor(trulyAvailableShares).toLocaleString()} سهم آزاد در پورتفولیوی خود دارید.`);
-      return;
-    }
-    const success = await addPosition(formData);
+    const success = await addPosition(formData, portfolioOpenPositions);
     if (success) closeModal();
-  }, [addPosition, closeModal, portfolioOpenPositions, openPositions]);
+  }, [addPosition, closeModal, portfolioOpenPositions]);
 
   const handleEditSubmit = useCallback(async (formData) => {
     if (!modal.data) return;
-    const { contracts_count, shares_per_contract, underlying_symbol } = formData;
-    const requiredShares = (Number(contracts_count) || 0) * (Number(shares_per_contract) || 1000);
-    const currentPortfolioPosition = portfolioOpenPositions.find(p => p.symbol === underlying_symbol);
-    const availableSharesInPortfolio = currentPortfolioPosition ? currentPortfolioPosition.remainingQty : 0;
-    const sharesCoveringOtherPositions = openPositions
-      .filter(p => p.underlying_symbol === underlying_symbol && p.id !== modal.data.id)
-      .reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
-    const trulyAvailableShares = availableSharesInPortfolio - sharesCoveringOtherPositions;
-  
-    if (requiredShares > trulyAvailableShares) {
-      showErrorAlert("خطا: سهام آزاد کافی نیست", `شما برای پوشش این تعداد قرارداد به ${requiredShares.toLocaleString()} سهم نیاز دارید، اما با احتساب دیگر معاملات باز، فقط ${Math.floor(trulyAvailableShares).toLocaleString()} سهم آزاد در پورتفولیوی خود دارید.`);
-      return;
-    }
-    const success = await updatePosition(modal.data.id, formData);
+    const success = await updatePosition(modal.data.id, formData, portfolioOpenPositions);
     if (success) closeModal();
-  }, [updatePosition, closeModal, modal.data, portfolioOpenPositions, openPositions]);
+  }, [updatePosition, closeModal, modal.data, portfolioOpenPositions]);
 
   const handleManageSubmit = useCallback(async (formData) => {
       if (!modal.data) return;
@@ -118,7 +94,7 @@ export const useCoveredCallLogic = () => {
     openPositions,
     historyPositions,
     portfolioOpenPositions,
-    summaryMetrics, // <-- ارسال محاسبات به صفحه
+    summaryMetrics,
     modal,
     openModal,
     closeModal,
