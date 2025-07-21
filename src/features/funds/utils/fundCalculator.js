@@ -1,5 +1,55 @@
 const MS_IN_DAY = 1000 * 60 * 60 * 24;
 
+function XIRR(cashflows, guess = 0.1) {
+  if (cashflows.length === 0) {
+    return 0;
+  }
+
+  const values = cashflows.map(cf => cf.amount);
+  const dates = cashflows.map(cf => new Date(cf.date));
+  
+  const irrResult = (values, dates, rate) => {
+    const r = rate + 1;
+    let result = values[0];
+    for (let i = 1; i < values.length; i++) {
+      const days = (dates[i] - dates[0]) / MS_IN_DAY;
+      result += values[i] / Math.pow(r, days / 365.0);
+    }
+    return result;
+  };
+
+  const irrResultDeriv = (values, dates, rate) => {
+    const r = rate + 1;
+    let result = 0;
+    for (let i = 1; i < values.length; i++) {
+      const days = (dates[i] - dates[0]) / MS_IN_DAY;
+      result -= (days / 365.0) * values[i] / Math.pow(r, (days / 365.0) + 1);
+    }
+    return result;
+  };
+
+  let resultRate = guess;
+  const epsMax = 1e-10;
+  const iterMax = 50;
+  let newRate, epsRate, resultValue;
+  let iteration = 0;
+  let contLoop = true;
+  
+  do {
+    resultValue = irrResult(values, dates, resultRate);
+    newRate = resultRate - resultValue / irrResultDeriv(values, dates, resultRate);
+    epsRate = Math.abs(newRate - resultRate);
+    resultRate = newRate;
+    contLoop = (epsRate > epsMax) && (Math.abs(resultValue) > epsMax);
+  } while (contLoop && (++iteration < iterMax));
+
+  if (contLoop) {
+    return Infinity; 
+  }
+
+  return resultRate;
+}
+
 export const processFundPositions = (trades, allSymbolsData) => {
   const positionsMap = new Map();
   const symbolLatestPrices = new Map();
@@ -8,7 +58,15 @@ export const processFundPositions = (trades, allSymbolsData) => {
     if (s.symbol && s.price != null) symbolLatestPrices.set(s.symbol, s.price / 10);
   });
 
-  const sortedTrades = [...trades].sort((a, b) => new Date(a.date) - new Date(b.date));
+const sortedTrades = [...trades].sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    if (dateA < dateB) return -1;
+    if (dateA > dateB) return 1;
+    const createdAtA = new Date(a.created_at);
+    const createdAtB = new Date(b.created_at);
+    return createdAtA - createdAtB;
+  });
 
   const createNewPosition = (trade) => ({
     symbol: trade.symbol,
@@ -37,7 +95,6 @@ export const processFundPositions = (trades, allSymbolsData) => {
     const position = positionsMap.get(symbol);
     position.detailData.push(trade);
     position.lastKnownPrice = Number(trade.price_per_unit) || position.lastKnownPrice;
-
 
     const quantity = Number(trade.quantity) || 0;
     const price = Number(trade.price_per_unit) || 0;
@@ -109,8 +166,22 @@ export const processFundPositions = (trades, allSymbolsData) => {
     const totalInvestment = position.totalBoughtValue;
     position.percentagePL = totalInvestment > 0 ? (position.totalPL / totalInvestment) * 100 : 0;
     
-    if(position.positionAgeDays > 0) {
-        position.annualizedReturnPercent = (position.percentagePL / position.positionAgeDays) * 365;
+    const cashflows = position.detailData.map(t => {
+        const amount = (t.quantity * t.price_per_unit);
+        const commission = t.commission || 0;
+        return {
+            amount: t.trade_type === 'buy' ? -(amount + commission) : (amount - commission),
+            date: new Date(t.date)
+        };
+    });
+
+    if (position.remainingQty > 0.001) {
+        cashflows.push({ amount: position.currentValue, date: new Date() });
+    }
+
+    if (cashflows.length > 1 && cashflows.some(cf => cf.amount > 0) && cashflows.some(cf => cf.amount < 0)) {
+        const xirrValue = XIRR(cashflows);
+        position.annualizedReturnPercent = isFinite(xirrValue) ? xirrValue * 100 : 0;
     } else {
         position.annualizedReturnPercent = 0;
     }

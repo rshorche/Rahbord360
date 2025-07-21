@@ -39,8 +39,8 @@ export default function FundsPage() {
         <Button variant="primary" onClick={() => openModal("add")} icon={<PlusCircle size={20} />}>ثبت معامله جدید</Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card title="ارزش کل صندوق‌ها" amount={summaryMetrics.totalValue} color="primary" icon={<Wallet size={24} />}/>
+<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <Card title="ارزش کل صندوق‌ها" amount={summaryMetrics.totalValue} color="primary" icon={<Wallet size={24} />}/>
         <Card title="هزینه کل خرید" amount={summaryMetrics.totalCost} color="default" icon={<ShoppingCart size={24} />}/>
         <Card title="سود/زیان باز" amount={summaryMetrics.totalUnrealizedPL} color={summaryMetrics.totalUnrealizedPL >= 0 ? "success" : "danger"} icon={<TrendingUp size={24} />}/>
       </div>
