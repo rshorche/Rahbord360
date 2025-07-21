@@ -44,14 +44,23 @@ const itemVariants = {
 
 export default function HowItWorksSection() {
   return (
-    <div className="bg-white py-24 sm:py-32">
+    <div id="how-it-works" className="bg-gray-50 py-24 sm:py-32 scroll-mt-20">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:text-center">
-          <motion.p
+          <motion.h2
             initial={{ y: 20, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.5 }}
+            className="text-base font-semibold leading-7 text-primary-600"
+          >
+            مسیر شما برای سرمایه‌گذاری موفق
+          </motion.h2>
+          <motion.p
+            initial={{ y: 20, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
             className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
           >
             تنها در ۳ قدم ساده، کنترل سبد خود را به دست بگیرید
@@ -66,14 +75,12 @@ export default function HowItWorksSection() {
             viewport={{ once: true, amount: 0.2 }}
           >
             {steps.map((step) => (
-              <motion.div key={step.name} variants={itemVariants} className="flex flex-col">
-                <dt className="text-base leading-7 text-gray-600">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-600 text-white mx-auto">
-                    <step.icon size={24} />
-                  </div>
-                  <span className="mt-6 block font-semibold text-gray-900 text-lg">{step.name}</span>
-                </dt>
-                <dd className="mt-1 flex-auto text-base leading-7 text-gray-600">{step.description}</dd>
+              <motion.div key={step.name} variants={itemVariants} className="flex flex-col items-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-gray-200">
+                  <step.icon className="h-8 w-8 text-primary-600" />
+                </div>
+                <dt className="mt-6 text-xl font-semibold leading-7 text-gray-900">{step.name}</dt>
+                <dd className="mt-2 flex-auto text-base leading-7 text-gray-600">{step.description}</dd>
               </motion.div>
             ))}
           </motion.dl>
