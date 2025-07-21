@@ -11,8 +11,8 @@ export default function Footer() {
           </a>
         </div>
         <div className="mt-8 md:mt-0">
-          <p className="text-center text-xs leading-5 text-gray-400">
-            &copy;  ۲۰۲۴ | طراحی و توسعه توسط 
+          <p className="text-center text-sm leading-5 text-gray-400">
+            &copy;  ۲۰۲۵ | طراحی و توسعه توسط 
             <a href="https://t.me/rshorche" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary-400 hover:underline">
                 ...رضا شورچه 
             </a>
