@@ -187,25 +187,50 @@ export default function OptionsPage() {
         <Card title="سود/زیان باز" amount={summaryMetrics.totalUnrealizedPL} color={summaryMetrics.totalUnrealizedPL >= 0 ? "success" : "danger"} icon={<TrendingUp size={24} />}/>
       </div>
       
-      <div className="bg-white rounded-xl shadow-md p-4">
-        <form onSubmit={handleManualPriceUpdate} className="flex flex-col sm:flex-row sm:items-end sm:gap-4 gap-y-3">
-            <h3 className="text-md font-semibold text-content-700 w-full sm:w-auto flex-shrink-0">به‌روزرسانی دستی قیمت:</h3>
-            <div className="flex-grow">
-                <label htmlFor="manual-symbol-select" className="text-xs text-content-600">انتخاب نماد باز</label>
-                <select id="manual-symbol-select" value={manualSymbol} onChange={(e) => setManualSymbol(e.target.value)} className="w-full h-10 px-3 border rounded-md outline-none focus:ring-2 focus:ring-primary-500/50 transition-all text-sm bg-white">
-                    <option value="">انتخاب کنید...</option>
-                    {openPositionsOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                </select>
-            </div>
-            <div className="flex-grow">
-                <label className="text-xs text-content-600">پرمیوم لحظه‌ای (تومان)</label>
-                <input value={manualPrice} onChange={(e) => setManualPrice(e.target.value)} type="number" placeholder="مثلا: ۲۵۰" className="w-full h-10 px-3 border rounded-md outline-none focus:ring-2 focus:ring-primary-500/50 transition-all text-sm" />
-            </div>
-            <Button type="submit" variant="outline" className="h-10 flex-shrink-0" icon={<RefreshCw size={16}/>}>ثبت قیمت</Button>
-        </form>
-      </div>
+     <div className="bg-content-50 border border-content-200 rounded-xl p-4">
+  <form onSubmit={handleManualPriceUpdate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-end gap-4">
+    <div className="sm:col-span-2 lg:col-span-1">
+      <h3 className="text-md font-semibold text-content-700 mb-1">به‌روزرسانی دستی قیمت:</h3>
+      <p className="text-xs text-content-500 hidden sm:block">قیمت لحظه‌ای را برای محاسبه سود و زیان وارد کنید.</p>
+    </div>
+    
+    <div className="flex-grow">
+      <label htmlFor="manual-symbol-select" className="block text-sm font-medium text-content-700 mb-1.5">انتخاب نماد باز</label>
+      <select 
+        id="manual-symbol-select" 
+        value={manualSymbol} 
+        onChange={(e) => setManualSymbol(e.target.value)} 
+        className="w-full h-11 px-3 border border-content-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500/50 transition-all text-sm bg-white"
+      >
+        <option value="">انتخاب کنید...</option>
+        {openPositionsOptions.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+    
+    <div className="flex-grow">
+      <label htmlFor="manual-price-input" className="block text-sm font-medium text-content-700 mb-1.5">پرمیوم لحظه‌ای (تومان)</label>
+      <input 
+        id="manual-price-input"
+        value={manualPrice} 
+        onChange={(e) => setManualPrice(e.target.value)} 
+        type="number" 
+        placeholder="مثلا: ۲۵۰" 
+        className="w-full h-11 px-3 border border-content-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500/50 transition-all text-sm" 
+      />
+    </div>
+    
+    <Button 
+      type="submit" 
+      variant="primary" 
+      className="h-11 w-full" 
+      icon={<RefreshCw size={18}/>}
+    >
+      ثبت قیمت
+    </Button>
+  </form>
+</div>
 
       <div className="border-b border-content-200">
         <nav className="-mb-px flex space-x-4 rtl:space-x-reverse" aria-label="Tabs">
