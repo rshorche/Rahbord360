@@ -31,6 +31,28 @@ const useCoveredCallStore = create((set, get) => ({
   addPosition: async (formData) => {
     set({ isLoading: true });
     try {
+      const { underlying_symbol, contracts_count, shares_per_contract } = formData;
+      const requiredShares = Number(contracts_count) * Number(shares_per_contract);
+
+      await useStockTradesStore.getState().fetchActions();
+      const calculateCurrentHolding = useStockTradesStore.getState().calculateCurrentHolding;
+      
+      const currentHoldings = calculateCurrentHolding(underlying_symbol);
+      
+      const otherOpenPositions = get().positions.filter(p => p.status === 'OPEN' && p.underlying_symbol === underlying_symbol);
+      const requiredSharesForOthers = otherOpenPositions.reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
+      
+      const freeShares = currentHoldings - requiredSharesForOthers;
+
+      if (requiredShares > freeShares) {
+        showErrorAlert(
+          "ثبت امکان‌پذیر نیست",
+          `برای پوشش این معامله به ${requiredShares.toLocaleString()} سهم نیاز دارید، اما تنها ${Math.floor(freeShares).toLocaleString()} سهم آزاد در پورتفوی شما موجود است.`
+        );
+        set({ isLoading: false });
+        return false;
+      }
+
       const payload = {
         underlying_symbol: formData.underlying_symbol,
         option_symbol: formData.option_symbol,
@@ -60,6 +82,27 @@ const useCoveredCallStore = create((set, get) => ({
   updatePosition: async (id, formData) => {
     set({ isLoading: true });
     try {
+       const { underlying_symbol, contracts_count, shares_per_contract } = formData;
+       const requiredShares = Number(contracts_count) * Number(shares_per_contract);
+ 
+       await useStockTradesStore.getState().fetchActions();
+       const calculateCurrentHolding = useStockTradesStore.getState().calculateCurrentHolding;
+       const currentHoldings = calculateCurrentHolding(underlying_symbol);
+       
+       const otherOpenPositions = get().positions.filter(p => p.status === 'OPEN' && p.underlying_symbol === underlying_symbol && p.id !== id);
+       const requiredSharesForOthers = otherOpenPositions.reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
+       
+       const freeShares = currentHoldings - requiredSharesForOthers;
+ 
+       if (requiredShares > freeShares) {
+         showErrorAlert(
+           "ویرایش امکان‌پذیر نیست",
+           `برای پوشش این تعداد قرارداد به ${requiredShares.toLocaleString()} سهم نیاز دارید، اما تنها ${Math.floor(freeShares).toLocaleString()} سهم آزاد در پورتفوی شما موجود است.`
+         );
+         set({ isLoading: false });
+         return false;
+       }
+
        const payload = {
         underlying_symbol: formData.underlying_symbol,
         option_symbol: formData.option_symbol,
@@ -118,13 +161,18 @@ const useCoveredCallStore = create((set, get) => ({
     set({ isLoading: true });
     try {
       const { underlying_symbol: underlyingSymbol } = positionToReopen;
+      
+      await get().fetchPositions();
+      await useStockTradesStore.getState().fetchActions();
+
       const allCoveredCallPositions = get().positions;
 
       const sharesToCoverReopen = positionToReopen.contracts_count * positionToReopen.shares_per_contract;
       const otherOpenPositions = allCoveredCallPositions.filter(p => p.status === 'OPEN' && p.id !== positionToReopen.id && p.underlying_symbol === underlyingSymbol);
       const requiredSharesForOthers = otherOpenPositions.reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
       
-      const currentHoldings = useStockTradesStore.getState().calculateCurrentHolding(underlyingSymbol);
+      const calculateCurrentHolding = useStockTradesStore.getState().calculateCurrentHolding;
+      const currentHoldings = calculateCurrentHolding(underlyingSymbol);
       const freeShares = currentHoldings - requiredSharesForOthers;
 
       if (sharesToCoverReopen > freeShares) {

@@ -74,16 +74,16 @@ export const useCoveredCallLogic = () => {
   const handleReopenPosition = useCallback(async (position) => {
     const confirmed = await showConfirmAlert("بازگشایی پوزیشن", "آیا مطمئن هستید؟ با این کار، رویدادهای مالی مرتبط (مانند فروش سهام) حذف شده و پوزیشن به حالت باز برمی‌گردد.");
     if (confirmed) {
-      await reopenPosition(position);
-      closeModal();
+      const success = await reopenPosition(position);
+      if (success) closeModal();
     }
   }, [reopenPosition, closeModal]);
 
   const handleDeletePosition = useCallback(async (position) => {
       const confirmed = await showConfirmAlert("حذف معامله", "آیا از حذف این معامله کاورد کال مطمئن هستید؟");
       if (confirmed) {
-        await deletePosition(position.id);
-        closeModal();
+        const success = await deletePosition(position.id);
+        if (success) closeModal();
       }
     }, [deletePosition, closeModal]);
 
