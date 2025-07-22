@@ -7,6 +7,15 @@ import DateInput from "../../../../shared/components/ui/forms/DateInput";
 import TextInput from "../../../../shared/components/ui/forms/TextInput";
 import Button from "../../../../shared/components/ui/Button";
 import SelectInput from "../../../../shared/components/ui/forms/SelectInput";
+import TextareaInput from "../../../../shared/components/ui/forms/TextareaInput";
+
+const getInitialValues = (initialData) => ({
+  date: initialData ? new Date(initialData.date) : new Date(),
+  symbol: initialData ? initialData.symbol : "",
+  quantity: initialData ? initialData.quantity : "",
+  type: "bonus",
+  notes: initialData ? initialData.notes || "" : "", // Ensure notes is always a string
+});
 
 export default function AddBonusForm({
   onSubmitSuccess,
@@ -18,14 +27,7 @@ export default function AddBonusForm({
 
   const methods = useForm({
     resolver: yupResolver(bonusSchema),
-    defaultValues: initialData
-      ? { ...initialData, date: new Date(initialData.date) }
-      : {
-          date: new Date(),
-          symbol: "",
-          quantity: "",
-          type: "bonus", 
-        },
+    defaultValues: getInitialValues(initialData),
   });
 
   const {
@@ -35,12 +37,8 @@ export default function AddBonusForm({
   } = methods;
 
   useEffect(() => {
-    if (isEditMode && initialData) {
-      reset({ ...initialData, date: new Date(initialData.date) });
-    } else if (!isEditMode) {
-      reset({ date: new Date(), symbol: "", quantity: "", type: "bonus" });
-    }
-  }, [initialData, isEditMode, reset]);
+    reset(getInitialValues(initialData));
+  }, [initialData, reset]);
 
   const handleFormSubmit = async (formData) => {
     const success = isEditMode
@@ -70,6 +68,7 @@ export default function AddBonusForm({
             label="انتخاب نماد"
             options={symbolOptions}
             placeholder="یک نماد انتخاب کنید"
+            disabled={isEditMode}
           />
         </div>
         <TextInput
@@ -78,6 +77,7 @@ export default function AddBonusForm({
           type="number"
           inputMode="numeric"
         />
+        <TextareaInput name="notes" label="یادداشت (اختیاری)" />
         <div className="flex justify-end pt-3">
           <Button type="submit" variant="primary" disabled={isSubmitting}>
             {isSubmitting ? "در حال پردازش..." : (isEditMode ? "ذخیره تغییرات" : "ثبت سهام جایزه")}

@@ -7,6 +7,7 @@ import DateInput from "../../../../shared/components/ui/forms/DateInput";
 import TextInput from "../../../../shared/components/ui/forms/TextInput";
 import Button from "../../../../shared/components/ui/Button";
 import SelectInput from "../../../../shared/components/ui/forms/SelectInput";
+import TextareaInput from "../../../../shared/components/ui/forms/TextareaInput"; // <-- Import added
 
 export default function AddDividendForm({
   onSubmitSuccess,
@@ -19,12 +20,13 @@ export default function AddDividendForm({
   const methods = useForm({
     resolver: yupResolver(dividendSchema),
     defaultValues: initialData
-      ? { ...initialData, date: new Date(initialData.date) }
+      ? { ...initialData, date: new Date(initialData.date), notes: initialData.notes || "" }
       : {
           date: new Date(),
           symbol: "",
           amount: "",
           type: "dividend",
+          notes: "",
         },
   });
 
@@ -36,9 +38,9 @@ export default function AddDividendForm({
 
   useEffect(() => {
     if (isEditMode && initialData) {
-      reset({ ...initialData, date: new Date(initialData.date) });
+      reset({ ...initialData, date: new Date(initialData.date), notes: initialData.notes || "" });
     } else if (!isEditMode) {
-      reset({ date: new Date(), symbol: "", amount: "", type: "dividend" });
+      reset({ date: new Date(), symbol: "", amount: "", type: "dividend", notes: "" });
     }
   }, [initialData, isEditMode, reset]);
 
@@ -83,6 +85,7 @@ export default function AddDividendForm({
           type="number"
           inputMode="decimal"
         />
+        <TextareaInput name="notes" label="یادداشت (اختیاری)" />
         <div className="flex justify-end pt-3">
           <Button type="submit" variant="primary" disabled={isSubmitting}>
             {isSubmitting ? "در حال پردازش..." : (isEditMode ? "ذخیره تغییرات" : "ثبت سود نقدی")}

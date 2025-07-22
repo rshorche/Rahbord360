@@ -7,6 +7,7 @@ import DateInput from "../../../../shared/components/ui/forms/DateInput";
 import TextInput from "../../../../shared/components/ui/forms/TextInput";
 import Button from "../../../../shared/components/ui/Button";
 import SelectInput from "../../../../shared/components/ui/forms/SelectInput";
+import TextareaInput from "../../../../shared/components/ui/forms/TextareaInput"; // <-- Import added
 
 export default function AddPremiumForm({
   onSubmitSuccess,
@@ -19,7 +20,7 @@ export default function AddPremiumForm({
   const methods = useForm({
     resolver: yupResolver(premiumSchema),
     defaultValues: initialData
-      ? { ...initialData, date: new Date(initialData.date) }
+      ? { ...initialData, date: new Date(initialData.date), notes: initialData.notes || "" }
       : {
           date: new Date(),
           symbol: "",
@@ -27,6 +28,7 @@ export default function AddPremiumForm({
           quantity: "",
           amount: "",
           type: "premium",
+          notes: "",
         },
   });
 
@@ -41,7 +43,7 @@ export default function AddPremiumForm({
 
   useEffect(() => {
     if (isEditMode && initialData) {
-      reset({ ...initialData, date: new Date(initialData.date) });
+      reset({ ...initialData, date: new Date(initialData.date), notes: initialData.notes || "" });
     }
   }, [initialData, isEditMode, reset]);
 
@@ -66,7 +68,13 @@ export default function AddPremiumForm({
         <p className="text-sm text-content-600">افزایش سرمایه از محل صرف سهام را ثبت کنید.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <DateInput name="date" label="تاریخ رویداد" />
-          <SelectInput name="symbol" label="انتخاب نماد" options={symbolOptions} placeholder="یک نماد انتخاب کنید" />
+          <SelectInput
+            name="symbol"
+            label="انتخاب نماد"
+            options={symbolOptions}
+            placeholder="یک نماد انتخاب کنید"
+            disabled={isEditMode}
+          />
         </div>
         
         <div>
@@ -95,6 +103,7 @@ export default function AddPremiumForm({
           </div>
         )}
 
+        <TextareaInput name="notes" label="یادداشت (اختیاری)" />
         <div className="flex justify-end pt-3">
           <Button type="submit" variant="primary" disabled={isSubmitting}>
             {isSubmitting ? "در حال پردازش..." : (isEditMode ? "ذخیره تغییرات" : "ثبت رویداد")}

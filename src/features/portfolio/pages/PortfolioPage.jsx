@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import useStockTradesStore from "../store/useStockTradesStore";
 import usePriceHistoryStore from "../../../shared/store/usePriceHistoryStore";
 import { processPortfolio } from "../utils/portfolioCalculator.js";
@@ -35,6 +35,14 @@ export default function PortfolioPage() {
     return processPortfolio(actions, latestPricesForCalculator);
   }, [actions, priceHistory]);
 
+  const allSymbols = useMemo(() => {
+    const symbols = new Set([
+      ...openPositions.map(p => p.symbol),
+      ...closedPositions.map(p => p.symbol)
+    ]);
+    return Array.from(symbols);
+  }, [openPositions, closedPositions]);
+
   const portfolioMetrics = useMemo(() => {
     const totalCurrentValue = openPositions.reduce((sum, pos) => sum + pos.currentValue, 0);
     const totalUnrealizedPL = openPositions.reduce((sum, pos) => sum + pos.unrealizedPL, 0);
@@ -58,7 +66,10 @@ export default function PortfolioPage() {
     setIsDetailModalOpen(true);
   }, []);
   
-  const handleCloseDetailModal = useCallback(() => setIsDetailModalOpen(false), []);
+  const handleCloseDetailModal = useCallback(() => {
+    setIsDetailModalOpen(false);
+    setDetailData(null);
+  }, []);
 
   const handleEditAction = useCallback((action) => {
     setIsDetailModalOpen(false);
@@ -71,22 +82,22 @@ export default function PortfolioPage() {
   const handleDeleteAction = useCallback(async (id) => {
     const confirmed = await showConfirmAlert("حذف رویداد", "آیا از حذف این رویداد مطمئن هستید؟");
     if (confirmed) {
-      const success = await deleteAction(id);
-      if (success) {
-        const deletedAction = actions.find(a => a.id === id);
-        if (deletedAction && detailData && deletedAction.symbol === detailData.symbol) {
-            const latestPricesForCalculator = Array.from(priceHistory.values());
-            const { openPositions, closedPositions } = processPortfolio(actions.filter(a => a.id !== id), latestPricesForCalculator);
-            const updatedPositionData = [...openPositions, ...closedPositions].find(p => p.symbol === deletedAction.symbol);
-            if(updatedPositionData) {
-                setDetailData(updatedPositionData);
-            } else {
-                handleCloseDetailModal();
-            }
-        }
+      await deleteAction(id);
+    }
+  }, [deleteAction]);
+
+  useEffect(() => {
+    if (isDetailModalOpen && detailData) {
+      const allPositions = [...openPositions, ...closedPositions];
+      const updatedPositionData = allPositions.find(p => p.instanceId === detailData.instanceId);
+      
+      if (updatedPositionData) {
+        setDetailData(updatedPositionData);
+      } else {
+        handleCloseDetailModal();
       }
     }
-  }, [deleteAction, actions, detailData, handleCloseDetailModal, priceHistory]);
+  }, [openPositions, closedPositions, isDetailModalOpen, detailData, handleCloseDetailModal]);
 
   const masterColumnDefs = useMemo(() => getMasterColumnDefs(handleOpenDetailModal), [handleOpenDetailModal]);
   const closedColumnDefs = useMemo(() => getClosedColumnDefs(handleOpenDetailModal), [handleOpenDetailModal]);
@@ -136,7 +147,7 @@ export default function PortfolioPage() {
           onSubmitSuccess={handleCloseAddModal}
           initialData={editingAction}
           isEditMode={!!editingAction}
-          portfolioPositions={openPositions}
+          portfolioSymbols={allSymbols}
         />
       </Modal>
       

@@ -17,7 +17,9 @@ const OutcomeWatcher = ({ control }) => {
       {outcome === "exercise" && (
         <>
           <TextInput name="quantity" label="تعداد حق تقدم استفاده شده" type="number" />
-          <TextInput name="price" label="قیمت اسمی هر سهم (تومان)" type="number" />
+          {/* *** START OF CHANGE *** */}
+          <TextInput name="price" label="بهای تمام شده هر سهم جدید (تومان)" type="number" />
+          {/* *** END OF CHANGE *** */}
           <TextInput name="commission" label="کارمزد (اختیاری)" type="number" />
         </>
       )}

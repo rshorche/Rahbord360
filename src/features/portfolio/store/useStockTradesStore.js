@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { supabase } from "../../../shared/services/supabase";
 import { showSuccessToast, showErrorAlert } from "../../../shared/utils/notifications";
 import useCoveredCallStore from "../../covered-call/store/useCoveredCallStore";
+import { calculateSymbolHolding } from "../utils/portfolioCalculator";
 
 const useStockTradesStore = create((set, get) => ({
   actions: [],
@@ -9,29 +10,7 @@ const useStockTradesStore = create((set, get) => ({
   error: null,
 
   calculateCurrentHolding: (symbol) => {
-    const actions = get().actions;
-    if (!actions || !Array.isArray(actions)) return 0;
-    return actions
-      .filter(a => a.symbol === symbol)
-      .reduce((total, action) => {
-        const quantity = Number(action.quantity) || 0;
-        switch (action.type) {
-          case 'buy':
-          case 'rights_exercise':
-          case 'bonus':
-            return total + quantity;
-          case 'premium':
-            return action.premium_type === 'bonus_shares' ? total + quantity : total;
-          case 'revaluation': { 
-            const multiplier = 1 + (Number(action.revaluation_percentage) / 100);
-            return Math.round(total * multiplier);
-          } 
-          case 'sell':
-            return total - quantity;
-          default:
-            return total;
-        }
-      }, 0);
+    return calculateSymbolHolding(get().actions, symbol);
   },
 
   fetchActions: async () => {
@@ -104,16 +83,9 @@ const useStockTradesStore = create((set, get) => ({
 
     if (!isInternalCall) {
         const { symbol } = actionToDelete;
-        const currentHoldings = get().calculateCurrentHolding(symbol);
         
-        let holdingsAfterDelete = currentHoldings;
-        const quantity = Number(actionToDelete.quantity) || 0;
-
-        if (['buy', 'bonus', 'rights_exercise'].includes(actionToDelete.type) || (actionToDelete.type === 'premium' && actionToDelete.premium_type === 'bonus_shares')) {
-            holdingsAfterDelete -= quantity;
-        } else if (actionToDelete.type === 'sell') {
-            holdingsAfterDelete += quantity;
-        }
+        const actionsAfterDelete = get().actions.filter(a => a.id !== id);
+        const holdingsAfterDelete = calculateSymbolHolding(actionsAfterDelete, symbol);
 
         const openCoveredCallPositions = await useCoveredCallStore.getState().fetchPositions();
         const requiredSharesToCover = openCoveredCallPositions

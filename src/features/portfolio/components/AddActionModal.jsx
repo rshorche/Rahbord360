@@ -10,7 +10,9 @@ import { cn } from "../../../shared/utils/cn";
 
 export default function AddActionModal({
   onSubmitSuccess,
-  portfolioPositions = [],
+  // *** START OF CHANGE ***
+  portfolioSymbols = [], // Changed from portfolioPositions
+  // *** END OF CHANGE ***
   initialData = null,
   isEditMode = false,
 }) {
@@ -34,9 +36,7 @@ export default function AddActionModal({
   }, [initialData, isEditMode]);
 
   const renderForm = () => {
-    const portfolioSymbols = portfolioPositions.map((p) => p.symbol);
     const formProps = { onSubmitSuccess, portfolioSymbols, initialData, isEditMode };
-
     if (isEditMode) {
       switch (initialData.type) {
         case 'buy':

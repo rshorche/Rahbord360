@@ -7,6 +7,15 @@ import DateInput from "../../../../shared/components/ui/forms/DateInput";
 import TextInput from "../../../../shared/components/ui/forms/TextInput";
 import Button from "../../../../shared/components/ui/Button";
 import SelectInput from "../../../../shared/components/ui/forms/SelectInput";
+import TextareaInput from "../../../../shared/components/ui/forms/TextareaInput";
+
+const getInitialValues = (initialData) => ({
+  date: initialData ? new Date(initialData.date) : new Date(),
+  symbol: initialData ? initialData.symbol : "",
+  revaluation_percentage: initialData ? initialData.revaluation_percentage : "",
+  type: "revaluation",
+  notes: initialData ? initialData.notes || "" : "", // Ensure notes is always a string
+});
 
 export default function AddRevaluationForm({
   onSubmitSuccess,
@@ -18,14 +27,7 @@ export default function AddRevaluationForm({
 
   const methods = useForm({
     resolver: yupResolver(revaluationSchema),
-    defaultValues: initialData
-      ? { ...initialData, date: new Date(initialData.date) }
-      : {
-          date: new Date(),
-          symbol: "",
-          revaluation_percentage: "",
-          type: "revaluation",
-        },
+    defaultValues: getInitialValues(initialData),
   });
 
   const {
@@ -35,12 +37,8 @@ export default function AddRevaluationForm({
   } = methods;
 
   useEffect(() => {
-    if (isEditMode && initialData) {
-      reset({ ...initialData, date: new Date(initialData.date) });
-    } else if (!isEditMode) {
-      reset({ date: new Date(), symbol: "", revaluation_percentage: "", type: "revaluation" });
-    }
-  }, [initialData, isEditMode, reset]);
+    reset(getInitialValues(initialData));
+  }, [initialData, reset]);
 
   const handleFormSubmit = async (formData) => {
     const success = isEditMode
@@ -70,6 +68,7 @@ export default function AddRevaluationForm({
             label="انتخاب نماد"
             options={symbolOptions}
             placeholder="یک نماد انتخاب کنید"
+            disabled={isEditMode}
           />
         </div>
         <TextInput
@@ -79,6 +78,7 @@ export default function AddRevaluationForm({
           inputMode="decimal"
           placeholder="مثلاً: 500 برای 500٪"
         />
+        <TextareaInput name="notes" label="یادداشت (اختیاری)" />
         <div className="flex justify-end pt-3">
           <Button type="submit" variant="primary" disabled={isSubmitting}>
             {isSubmitting ? "در حال پردازش..." : (isEditMode ? "ذخیره تغییرات" : "ثبت تجدید ارزیابی")}

@@ -1,5 +1,42 @@
+export const calculateSymbolHolding = (actions, symbol) => {
+  if (!actions || !Array.isArray(actions)) return 0;
+
+  const sortedActions = [...actions]
+    .filter(a => a.symbol === symbol)
+    .sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        if (dateA < dateB) return -1;
+        if (dateA > dateB) return 1;
+        const createdAtA = new Date(a.created_at);
+        const createdAtB = new Date(b.created_at);
+        return createdAtA - createdAtB;
+    });
+
+  return sortedActions.reduce((total, action) => {
+    const quantity = Number(action.quantity) || 0;
+    switch (action.type) {
+      case 'buy':
+      case 'rights_exercise':
+      case 'bonus':
+        return total + quantity;
+      case 'premium':
+        return action.premium_type === 'bonus_shares' ? total + quantity : total;
+      case 'revaluation': {
+        const multiplier = 1 + (Number(action.revaluation_percentage) / 100);
+        return Math.round(total * multiplier);
+      }
+      case 'sell':
+        return total - quantity;
+      default:
+        return total;
+    }
+  }, 0);
+};
+
 export const processPortfolio = (actions, allSymbolsData) => {
-  const positionsMap = new Map();
+  const allPositionInstances = [];
+  const openPositionsMap = new Map();
   const symbolLatestPrices = new Map();
 
   allSymbolsData.forEach((s) => {
@@ -17,19 +54,38 @@ export const processPortfolio = (actions, allSymbolsData) => {
   });
 
   const createNewPosition = (symbol) => ({
-    symbol: symbol, remainingQty: 0, totalBuyCost: 0, totalRealizedPL: 0, totalDividend: 0, totalRightsSellRevenue: 0, detailData: [], firstBuyDate: null, lastSellDate: null, totalBoughtQty: 0, totalSoldQty: 0, totalBoughtValue: 0, totalSoldValue: 0,
-    bonusQty: 0, revaluationQtyIncrease: 0, rightsQty: 0, premiumQty: 0,
+    instanceId: `${symbol}-${Date.now()}-${Math.random()}`,
+    symbol: symbol,
+    remainingQty: 0,
+    totalBuyCost: 0,
+    totalRealizedPL: 0,
+    totalDividend: 0,
+    totalRightsSellRevenue: 0,
+    detailData: [],
+    firstBuyDate: null,
+    lastSellDate: null,
+    totalBoughtQty: 0,
+    totalSoldQty: 0,
+    totalBoughtValue: 0,
+    totalSoldValue: 0,
+    bonusQty: 0,
+    revaluationQtyIncrease: 0,
+    rightsQty: 0,
+    premiumQty: 0,
   });
 
   sortedActions.forEach((action) => {
     const { symbol } = action;
     if (!symbol) return;
 
-    if (!positionsMap.has(symbol)) {
-      positionsMap.set(symbol, createNewPosition(symbol));
+    let position = openPositionsMap.get(symbol);
+
+    if (!position) {
+      position = createNewPosition(symbol);
+      allPositionInstances.push(position);
+      openPositionsMap.set(symbol, position);
     }
     
-    const position = positionsMap.get(symbol);
     position.detailData.push(action);
 
     const quantity = Number(action.quantity) || 0;
@@ -39,10 +95,9 @@ export const processPortfolio = (actions, allSymbolsData) => {
 
     switch (action.type) {
       case 'buy':
-      case 'rights_exercise': { 
-        if (!position.firstBuyDate || position.remainingQty < 0.001) {
+      case 'rights_exercise': {
+        if (!position.firstBuyDate) {
             position.firstBuyDate = action.date;
-            position.lastSellDate = null;
         }
         const buyCost = (quantity * price) + commission;
         position.remainingQty += quantity;
@@ -51,9 +106,9 @@ export const processPortfolio = (actions, allSymbolsData) => {
         position.totalBoughtValue += buyCost;
         if (action.type === 'rights_exercise') position.rightsQty += quantity;
         break;
-      } 
+      }
         
-      case 'sell': { 
+      case 'sell': {
         if (position.remainingQty > 0) {
           const avgCostPerShare = position.totalBuyCost / position.remainingQty;
           const costOfSoldShares = quantity * avgCostPerShare;
@@ -68,10 +123,11 @@ export const processPortfolio = (actions, allSymbolsData) => {
               position.lastSellDate = action.date;
               position.remainingQty = 0;
               position.totalBuyCost = 0;
+              openPositionsMap.delete(symbol);
           }
         }
         break;
-      } 
+      }
 
       case 'dividend':
         position.totalDividend += amount;
@@ -82,14 +138,14 @@ export const processPortfolio = (actions, allSymbolsData) => {
         if (action.premium_type === 'bonus_shares') {
           position.remainingQty += quantity;
           position.totalBoughtQty += quantity;
-          position.premiumQty += quantity; 
+          position.premiumQty += quantity;
         }
         break;
       
       case 'bonus':
         position.remainingQty += quantity;
         position.totalBoughtQty += quantity;
-        position.bonusQty += quantity; 
+        position.bonusQty += quantity;
         break;
       
       case 'rights_sell':
@@ -105,16 +161,14 @@ export const processPortfolio = (actions, allSymbolsData) => {
         position.totalBoughtQty += addedQty;
         position.revaluationQtyIncrease += addedQty;
         break;
-      } 
+      }
     }
   });
 
   let totalPortfolioValue = 0;
-  const allPositions = Array.from(positionsMap.values());
-
   const MS_IN_DAY = 1000 * 60 * 60 * 24;
 
-  allPositions.forEach((position) => {
+  allPositionInstances.forEach((position) => {
     const latestPrice = symbolLatestPrices.get(position.symbol) || 0;
     position.currentPrice = latestPrice;
     position.currentValue = position.remainingQty * latestPrice;
@@ -125,7 +179,7 @@ export const processPortfolio = (actions, allSymbolsData) => {
       totalPortfolioValue += position.currentValue;
 
       const startDate = new Date(position.firstBuyDate);
-      const endDate = position.lastSellDate ? new Date(position.lastSellDate) : new Date();
+      const endDate = new Date();
       position.positionAgeDays = Math.round((endDate - startDate) / MS_IN_DAY);
 
     } else {
@@ -154,12 +208,12 @@ export const processPortfolio = (actions, allSymbolsData) => {
     position.avgSoldPrice = position.totalSoldQty > 0 ? position.totalSoldValue / position.totalSoldQty : 0;
   });
   
-  allPositions.forEach(p => {
+  allPositionInstances.forEach(p => {
     p.percentageOfPortfolio = totalPortfolioValue > 0 ? (p.currentValue / totalPortfolioValue) * 100 : 0;
   });
 
-  const openPositions = allPositions.filter(p => p.remainingQty > 0.001);
-  const closedPositions = allPositions.filter(p => p.remainingQty <= 0.001);
+  const openPositions = allPositionInstances.filter(p => p.remainingQty > 0.001);
+  const closedPositions = allPositionInstances.filter(p => p.remainingQty <= 0.001 && p.totalSoldQty > 0);
   
   return { openPositions, closedPositions };
 };
