@@ -16,7 +16,7 @@ export const useOptionsLogic = () => {
     deletePosition,
   } = useOptionsStore();
 
-  const { deleteAction, addAction, actions: portfolioActions, fetchActions: fetchStockActions } = useStockTradesStore();
+  const { addAction, deleteAction, actions: portfolioActions, fetchActions: fetchStockActions } = useStockTradesStore();
   const { priceHistory } = usePriceHistoryStore();
   const [activeTab, setActiveTab] = useState("open");
   const [modal, setModal] = useState({ type: null, data: null });
@@ -46,47 +46,63 @@ export const useOptionsLogic = () => {
   const openModal = useCallback((type, data = null) => setModal({ type, data }), []);
   const closeModal = useCallback(() => setModal({ type: null, data: null }), []);
 
+  const manageLinkedStockTrade = useCallback(async (optionTrade, actionType = 'sync') => {
+    const { id, status, option_type, underlying_symbol, trade_date, contracts_count, strike_price, option_symbol } = optionTrade;
+    const noteToFind = `[ref_opt:${id}]`;
+    const linkedAction = portfolioActions.find(a => a.notes && a.notes.includes(noteToFind));
+
+    if (linkedAction) {
+      const deleteSuccess = await deleteAction(linkedAction.id, true);
+      if (!deleteSuccess) {
+        showErrorAlert("خطا در حذف معامله سهام مرتبط قدیمی");
+        return false;
+      }
+    }
+
+    if (actionType === 'delete') {
+      return true;
+    }
+
+    if (status === 'EXERCISED') {
+      const isCall = option_type === 'call';
+      const stockAction = {
+        type: isCall ? 'buy' : 'sell',
+        symbol: underlying_symbol,
+        date: new DateObject(trade_date).format("YYYY-MM-DD"),
+        quantity: Number(contracts_count) * 1000,
+        price: Number(strike_price),
+        commission: 0,
+        notes: `اعمال ${contracts_count} عدد اختیار ${option_symbol} ${noteToFind}`
+      };
+      const addSuccess = await addAction(stockAction, true);
+      if (!addSuccess) {
+        showErrorAlert("خطا در ایجاد معامله سهام جدید");
+        return false;
+      }
+    }
+    return true;
+  }, [portfolioActions, addAction, deleteAction]);
+
   const handleAddSubmit = useCallback(async (formData) => {
-    const success = await addPosition(formData);
-    if (success) closeModal();
-  }, [addPosition, closeModal]);
+    const newTrade = await addPosition(formData);
+    if (newTrade) {
+      if (newTrade.status === 'EXERCISED') {
+        await manageLinkedStockTrade(newTrade);
+      }
+      closeModal();
+    }
+  }, [addPosition, closeModal, manageLinkedStockTrade]);
 
   const handleEditSubmit = useCallback(async (formData) => {
     const tradeToEdit = modal.data;
     if (!tradeToEdit) return;
-
-    if (tradeToEdit.status === 'EXERCISED') {
-      const openingTradeInHistory = allTrades.find(t => t.option_symbol === tradeToEdit.option_symbol && t.trade_type.includes('open'));
-      if (openingTradeInHistory) {
-        const noteToFind = `[ref_opt:${openingTradeInHistory.id}]`;
-        const linkedAction = portfolioActions.find(a => a.notes && a.notes.includes(noteToFind));
-        if (linkedAction) {
-          await deleteAction(linkedAction.id, true);
-        }
-      }
+  
+    const updatedTrade = await updatePosition(tradeToEdit.id, formData);
+    if (updatedTrade) {
+      await manageLinkedStockTrade(updatedTrade);
+      closeModal();
     }
-    
-    const success = await updatePosition(tradeToEdit.id, formData);
-    if (success) {
-        if (formData.status === 'EXERCISED') {
-            const openingTradeInHistory = allTrades.find(t => t.option_symbol === formData.option_symbol && t.trade_type.includes('open'));
-            if(openingTradeInHistory) {
-                const isCall = formData.option_type === 'call';
-                const stockAction = {
-                    type: isCall ? 'buy' : 'sell',
-                    symbol: formData.underlying_symbol,
-                    date: new DateObject(formData.trade_date).format("YYYY-MM-DD"),
-                    quantity: Number(formData.contracts_count) * 1000,
-                    price: Number(formData.strike_price),
-                    commission: 0,
-                    notes: `اعمال ${formData.contracts_count} عدد اختیار ${formData.option_symbol} [ref_opt:${openingTradeInHistory.id}]`
-                };
-                await addAction(stockAction, true);
-            }
-        }
-        closeModal();
-    }
-  }, [modal.data, updatePosition, closeModal, portfolioActions, deleteAction, addAction, allTrades]);
+  }, [modal.data, updatePosition, closeModal, manageLinkedStockTrade]);
 
   const handleManageSubmit = useCallback(async (formData) => {
     if (!modal.data) return;
@@ -96,70 +112,51 @@ export const useOptionsLogic = () => {
       showErrorAlert("خطا", "معامله اولیه برای بستن پوزیشن پیدا نشد.");
       return;
     }
+    const closingDate = new DateObject(formData.closing_date).format("YYYY-MM-DD");
     const closingTradePayload = {
         ...openingTrade,
         id: undefined, 
         trade_type: position.position_type === 'Long' ? 'sell_to_close' : 'buy_to_close',
         contracts_count: formData.contracts_count,
         status: formData.status,
-        closing_date: new DateObject(formData.closing_date).format("YYYY-MM-DD"),
-        trade_date: new DateObject(formData.closing_date).format("YYYY-MM-DD"),
+        closing_date: closingDate,
+        trade_date: closingDate,
         notes: `بسته شدن ${formData.contracts_count} قرارداد به دلیل ${formData.status === 'EXPIRED' ? 'انقضا' : 'اعمال'}`,
         premium: 0, 
     };
     
-    const success = await addPosition(closingTradePayload);
+    const newTrade = await addPosition(closingTradePayload);
 
-    if (success && formData.status === 'EXERCISED') {
-        const isCall = openingTrade.option_type === 'call';
-        const stockAction = {
-            type: isCall ? 'buy' : 'sell',
-            symbol: openingTrade.underlying_symbol,
-            date: new DateObject(formData.closing_date).format("YYYY-MM-DD"),
-            quantity: Number(formData.contracts_count) * 1000,
-            price: Number(openingTrade.strike_price),
-            commission: 0,
-            notes: `اعمال ${formData.contracts_count} عدد اختیار ${openingTrade.option_symbol} [ref_opt:${openingTrade.id}]`
-        };
-        await addAction(stockAction, true);
+    if (newTrade && newTrade.status === 'EXERCISED') {
+        await manageLinkedStockTrade(newTrade);
     }
 
-    if (success) closeModal();
-  }, [modal.data, addPosition, closeModal, addAction]);
+    if (newTrade) closeModal();
+  }, [modal.data, addPosition, closeModal, manageLinkedStockTrade]);
   
   const handleDeleteSingleTrade = useCallback(async (tradeId, confirm = true) => {
     const confirmed = confirm ? await showConfirmAlert("حذف معامله", "آیا از حذف این معامله مطمئن هستید؟") : true;
-    if(!confirmed) return;
+    if(!confirmed) return false;
 
     const tradeToDelete = allTrades.find(t => t.id === tradeId);
-    if (!tradeToDelete) return;
+    if (!tradeToDelete) return false;
     
-    try {
-        if (tradeToDelete.status === 'EXERCISED') {
-            const openingTradeInHistory = allTrades.find(t => t.option_symbol === tradeToDelete.option_symbol && t.trade_type.includes('open'));
-            if(openingTradeInHistory) {
-                const noteToFind = `[ref_opt:${openingTradeInHistory.id}]`;
-                const linkedAction = portfolioActions.find(a => a.notes && a.notes.includes(noteToFind));
-                if (linkedAction) {
-                    await deleteAction(linkedAction.id, true);
-                }
-            }
-        }
-        
-        await deletePosition(tradeId);
-        if (confirm) {
-            showSuccessToast("معامله با موفقیت حذف شد.");
-            closeModal();
-        }
-
-    } catch (error) {
-        showErrorAlert("خطا در حذف معامله.", error.message);
+    if(tradeToDelete.status === 'EXERCISED'){
+        const cleanupSuccess = await manageLinkedStockTrade(tradeToDelete, 'delete');
+        if (!cleanupSuccess) return false;
     }
-  }, [allTrades, portfolioActions, deletePosition, deleteAction, closeModal]);
+        
+    const deleteSuccess = await deletePosition(tradeId);
+    if (deleteSuccess && confirm) {
+        showSuccessToast("معامله با موفقیت حذف شد.");
+    }
+    return deleteSuccess;
+  }, [allTrades, deletePosition, manageLinkedStockTrade]);
 
   const handleReopenPosition = useCallback(async (closingTrade) => {
-    await handleDeleteSingleTrade(closingTrade.id);
-  }, [handleDeleteSingleTrade]);
+    const success = await handleDeleteSingleTrade(closingTrade.id, true);
+    if (success) closeModal();
+  }, [handleDeleteSingleTrade, closeModal]);
 
   const handleDeleteAllForSymbol = useCallback(async (optionSymbol) => {
       const confirmed = await showConfirmAlert("حذف کلی پوزیشن", `آیا تمام معاملات مربوط به ${optionSymbol} حذف شوند؟ این عملیات غیرقابل بازگشت است.`);
@@ -175,14 +172,16 @@ export const useOptionsLogic = () => {
 
   return {
     isLoading,
+    allTrades,
+    priceHistory,
+    modal,
+    openModal,
+    closeModal,
     activeTab,
     setActiveTab,
     openPositions,
     historyPositions,
     summaryMetrics,
-    modal,
-    openModal,
-    closeModal,
     handleAddSubmit,
     handleEditSubmit,
     handleManageSubmit,

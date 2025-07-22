@@ -49,7 +49,7 @@ export const processOptionsPositions = (trades, priceHistory) => {
     return { openPositions: [], historyPositions: [] };
   }
   
-const sortedTrades = [...trades].sort((a, b) => {
+  const sortedTrades = [...trades].sort((a, b) => {
     const dateA = new Date(a.trade_date);
     const dateB = new Date(b.trade_date);
     if (dateA < dateB) return -1;
@@ -86,14 +86,19 @@ const sortedTrades = [...trades].sort((a, b) => {
         position.total_cost += costOfOpening;
         position.total_initial_cost += costOfOpening;
     } else { 
-        const avgCostPerContract = position.net_contracts !== 0 ? position.total_cost / position.net_contracts : 0;
-        const costOfContractsClosed = avgCostPerContract * tradeContracts;
+        const contractsBeforeClose = position.net_contracts;
+        const costBeforeClose = position.total_cost;
         
-        const realizedPlForThisTrade = ((tradeValue * costMultiplier * -1) - tradeCommission) - costOfContractsClosed;
+        const avgCostPerContract = contractsBeforeClose !== 0 ? costBeforeClose / contractsBeforeClose : 0;
+        const costOfContractsClosed = avgCostPerContract * tradeContracts * (costMultiplier * -1);
+        
+        const revenueFromClosing = (tradeValue * costMultiplier * -1) - tradeCommission;
+        const realizedPlForThisTrade = revenueFromClosing - costOfContractsClosed;
+        
         trade.realized_pl_on_close = realizedPlForThisTrade;
         position.realized_pl += realizedPlForThisTrade;
         
-        position.net_contracts -= tradeContracts * costMultiplier * -1;
+        position.net_contracts -= tradeContracts * (costMultiplier * -1);
         position.total_cost -= costOfContractsClosed;
     }
     
@@ -101,6 +106,16 @@ const sortedTrades = [...trades].sort((a, b) => {
   });
   
   const allPositions = Array.from(positions.values()).map(p => {
+    p.history.sort((a, b) => {
+        const dateA = new Date(a.trade_date);
+        const dateB = new Date(b.trade_date);
+        if (dateA > dateB) return -1;
+        if (dateA < dateB) return 1;
+        const createdAtA = new Date(a.created_at);
+        const createdAtB = new Date(b.created_at);
+        return createdAtB - createdAtA;
+    });
+
     p.status = Math.abs(p.net_contracts) < 0.001 ? 'CLOSED' : 'OPEN';
     p.position_type = p.net_contracts > 0 ? 'Long' : (p.net_contracts < 0 ? 'Short' : '---');
     p.contracts_count = p.net_contracts;
@@ -108,7 +123,8 @@ const sortedTrades = [...trades].sort((a, b) => {
     
     p.avg_premium = p.net_contracts !== 0 ? Math.abs(p.total_cost / p.net_contracts / 1000) : 0;
     
-    const optionPrice = priceHistory.get(p.option_symbol)?.price / 10 || 0;
+    const optionPriceData = priceHistory.get(p.option_symbol);
+    const optionPrice = optionPriceData ? optionPriceData.price / 10 : 0;
     const metrics = calculateOptionMetrics(p, optionPrice);
     
     return { ...p, ...metrics };

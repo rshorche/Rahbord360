@@ -15,9 +15,17 @@ const sanitizePayload = (formData) => {
             payload[key] = formData[key];
         }
     }
-    if (payload.trade_date) payload.trade_date = new DateObject(payload.trade_date).format("YYYY-MM-DD");
-    if (payload.expiration_date) payload.expiration_date = new DateObject(payload.expiration_date).format("YYYY-MM-DD");
-    if (payload.closing_date) payload.closing_date = new DateObject(payload.closing_date).format("YYYY-MM-DD");
+    
+    if (payload.trade_date) {
+        payload.trade_date = new DateObject(payload.trade_date).format("YYYY-MM-DD");
+    }
+    if (payload.expiration_date) {
+        payload.expiration_date = new DateObject(payload.expiration_date).format("YYYY-MM-DD");
+    }
+    if (payload.closing_date) {
+        payload.closing_date = new DateObject(payload.closing_date).format("YYYY-MM-DD");
+    }
+    
     return payload;
 };
 
@@ -29,7 +37,7 @@ const useOptionsStore = create((set, get) => ({
   fetchPositions: async () => {
     set({ isLoading: true, error: null });
     try {
-      const { data, error } = await supabase.from("options_trades").select("*").order("trade_date", { ascending: false });
+      const { data, error } = await supabase.from("options_trades").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       set({ positions: data || [], isLoading: false });
     } catch (error) {
@@ -44,15 +52,15 @@ const useOptionsStore = create((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("کاربر شناسایی نشد.");
       const payload = sanitizePayload({ ...formData, user_id: user.id });
-      const { error } = await supabase.from("options_trades").insert(payload);
+      const { data, error } = await supabase.from("options_trades").insert(payload).select().single();
       if (error) throw error;
       await get().fetchPositions();
       showSuccessToast("معامله با موفقیت ثبت شد.");
-      return true;
+      return data;
     } catch (error) {
       showErrorAlert("خطا در ثبت معامله.", error.message);
       set({ isLoading: false });
-      return false;
+      return null;
     }
   },
 
@@ -60,15 +68,15 @@ const useOptionsStore = create((set, get) => ({
     set({ isLoading: true });
     try {
       const payload = sanitizePayload(formData);
-      const { error } = await supabase.from("options_trades").update(payload).eq("id", id);
+      const { data, error } = await supabase.from("options_trades").update(payload).eq("id", id).select().single();
       if (error) throw error;
       await get().fetchPositions();
       showSuccessToast("معامله با موفقیت ویرایش شد.");
-      return true;
+      return data;
     } catch (error) {
       showErrorAlert("خطا در ویرایش معامله.", error.message);
       set({ isLoading: false });
-      return false;
+      return null;
     }
   },
   
@@ -78,7 +86,6 @@ const useOptionsStore = create((set, get) => ({
       const { error } = await supabase.from("options_trades").delete().eq("id", id);
       if (error) throw error;
       await get().fetchPositions();
-      showSuccessToast("معامله با موفقیت حذف شد.");
       return true;
     } catch (error) {
       showErrorAlert("خطا در حذف معامله.", error.message);
