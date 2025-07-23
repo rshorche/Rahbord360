@@ -37,17 +37,23 @@ export const useDashboardLogic = () => {
     const fetchAsyncData = async () => {
       setIsDashboardDataLoading(true);
       
-      const [summaryResult, historyResult] = await Promise.all([
-          supabase.from('dashboard_summary_cache').select('summary_data').single(),
-          supabase.from('portfolio_history').select('snapshot_date, total_value, net_deposits').order('snapshot_date', { ascending: true })
-      ]);
+      const { data: summaryResult, error: summaryError } = await supabase.rpc('get_dashboard_summary');
+      
+      const { data: historyResult, error: historyError } = await supabase
+          .from('portfolio_history')
+          .select('snapshot_date, total_value, net_deposits')
+          .order('snapshot_date', { ascending: true });
 
-      if (summaryResult.data) {
-        setDashboardSummary(summaryResult.data.summary_data);
+      if (summaryError) {
+        console.error("Error fetching dashboard summary:", summaryError);
+      } else if (summaryResult) {
+        setDashboardSummary(summaryResult);
       }
 
-      if (historyResult.data) {
-        setPortfolioHistoryData(historyResult.data.map(item => ({
+      if (historyError) {
+          console.error("Error fetching portfolio history:", historyError);
+      } else if (historyResult) {
+        setPortfolioHistoryData(historyResult.map(item => ({
           date: item.snapshot_date,
           total_value: Number(item.total_value),
           net_deposits: Number(item.net_deposits)
