@@ -5,7 +5,9 @@ import persian_fa from 'react-date-object/locales/persian_fa';
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    return new DateObject({ date: dateStr, calendar: persian, locale: persian_fa }).format("dddd DD MMMM");
+    // Ensure the date is treated correctly, regardless of timezone issues
+    const date = new Date(dateStr);
+    return new DateObject({ date, calendar: persian, locale: persian_fa }).format("dddd DD MMMM");
 };
 
 export default function UpcomingEvents({ events }) {

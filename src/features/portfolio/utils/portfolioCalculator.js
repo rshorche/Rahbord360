@@ -34,7 +34,7 @@ export const calculateSymbolHolding = (actions, symbol) => {
   }, 0);
 };
 
-export const processPortfolio = (actions, allSymbolsData) => {
+export const processPortfolio = (actions, allSymbolsData, coveredCallPositions = []) => {
   const allPositionInstances = [];
   const openPositionsMap = new Map();
   const symbolLatestPrices = new Map();
@@ -57,6 +57,7 @@ export const processPortfolio = (actions, allSymbolsData) => {
     instanceId: `${symbol}-${Date.now()}-${Math.random()}`,
     symbol: symbol,
     remainingQty: 0,
+    lockedQty: 0,
     totalBuyCost: 0,
     totalRealizedPL: 0,
     totalDividend: 0,
@@ -113,11 +114,13 @@ export const processPortfolio = (actions, allSymbolsData) => {
           const avgCostPerShare = position.totalBuyCost / position.remainingQty;
           const costOfSoldShares = quantity * avgCostPerShare;
           const sellRevenue = (quantity * price) - commission;
+          
           position.totalRealizedPL += sellRevenue - costOfSoldShares;
-          position.totalBuyCost -= costOfSoldShares;
-          position.remainingQty -= quantity;
           position.totalSoldQty += quantity;
           position.totalSoldValue += sellRevenue;
+          
+          position.remainingQty -= quantity;
+          position.totalBuyCost = position.remainingQty * avgCostPerShare;
           
           if (position.remainingQty < 0.001) {
               position.lastSellDate = action.date;
@@ -173,6 +176,10 @@ export const processPortfolio = (actions, allSymbolsData) => {
     position.currentPrice = latestPrice;
     position.currentValue = position.remainingQty * latestPrice;
     
+    position.lockedQty = (coveredCallPositions || [])
+      .filter(p => p.status === 'OPEN' && p.underlying_symbol === position.symbol)
+      .reduce((sum, p) => sum + (p.contracts_count * p.shares_per_contract), 0);
+
     if (position.remainingQty > 0.001) {
       position.avgBuyPriceAdjusted = position.totalBuyCost / position.remainingQty;
       position.unrealizedPL = position.currentValue - position.totalBuyCost;

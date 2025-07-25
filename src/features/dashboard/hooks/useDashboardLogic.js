@@ -1,125 +1,179 @@
 import { useMemo, useEffect, useState } from "react";
+import { supabase } from "../../../shared/services/supabase";
 import useStockTradesStore from "../../portfolio/store/useStockTradesStore";
 import useFundTradesStore from "../../funds/store/useFundTradesStore";
 import useOptionsStore from "../../options/store/useOptionsStore";
 import useCoveredCallStore from "../../covered-call/store/useCoveredCallStore";
+import useTransactionStore from "../../transactions/store/useTransactionStore";
 import usePriceHistoryStore from "../../../shared/store/usePriceHistoryStore";
 import { processPortfolio } from "../../portfolio/utils/portfolioCalculator";
 import { processFundPositions } from "../../funds/utils/fundCalculator";
 import { processOptionsPositions } from "../../options/utils/optionsCalculations";
-import { supabase } from "../../../shared/services/supabase";
+import { calculatePositionMetrics } from "../../covered-call/utils/coveredCallCalculations";
 
 export const useDashboardLogic = () => {
-  const portfolioActions = useStockTradesStore((state) => state.actions);
-  const fundTrades = useFundTradesStore((state) => state.trades);
-  const optionTrades = useOptionsStore((state) => state.positions);
-  const coveredCallTrades = useCoveredCallStore((state) => state.positions);
-  const priceHistory = usePriceHistoryStore((state) => state.priceHistory);
+  const { actions: portfolioActions, isLoading: isPortfolioLoading } = useStockTradesStore();
+  const { trades: fundTrades, isLoading: isFundsLoading } = useFundTradesStore();
+  const { positions: optionTrades, isLoading: isOptionsLoading } = useOptionsStore();
+  const { positions: coveredCallTrades, isLoading: isCoveredCallLoading } = useCoveredCallStore();
+  const { transactions, isLoading: isTransactionsLoading } = useTransactionStore();
+  const { priceHistory, lastFetchTimestamp, isLoading: isPriceHistoryLoading } = usePriceHistoryStore();
 
   const [portfolioHistoryData, setPortfolioHistoryData] = useState([]);
-  const [dashboardSummary, setDashboardSummary] = useState({
-    totalPortfolioValue: 0,
-    totalUnrealizedPL: 0,
-    todaysPL: 0,
-    totalReturnPercent: 0,
-  });
-  
-  const isPortfolioLoading = useStockTradesStore((state) => state.isLoading);
-  const isFundsLoading = useFundTradesStore((state) => state.isLoading);
-  const isOptionsLoading = useOptionsStore((state) => state.isLoading);
-  const isCoveredCallLoading = useCoveredCallStore((state) => state.isLoading);
-  const isPriceHistoryLoading = usePriceHistoryStore((state) => state.isLoading);
-  const [isDashboardDataLoading, setIsDashboardDataLoading] = useState(true);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
-  const isStoresLoading = isPortfolioLoading || isFundsLoading || isOptionsLoading || isCoveredCallLoading || isPriceHistoryLoading;
+  const isStoresLoading = isPortfolioLoading || isFundsLoading || isOptionsLoading || isCoveredCallLoading || isTransactionsLoading || isPriceHistoryLoading;
+  const isLoading = isStoresLoading || isHistoryLoading;
 
   useEffect(() => {
-    const fetchAsyncData = async () => {
-      setIsDashboardDataLoading(true);
-      
-      const { data: summaryResult, error: summaryError } = await supabase.rpc('get_dashboard_summary');
-      
-      const { data: historyResult, error: historyError } = await supabase
-          .from('portfolio_history')
-          .select('snapshot_date, total_value, net_deposits')
-          .order('snapshot_date', { ascending: true });
+    const fetchHistory = async () => {
+      setIsHistoryLoading(true);
+      const { data, error } = await supabase
+        .from('portfolio_history')
+        .select('snapshot_date, total_value, net_deposits, cumulative_pl')
+        .order('snapshot_date', { ascending: true });
 
-      if (summaryError) {
-        console.error("Error fetching dashboard summary:", summaryError);
-      } else if (summaryResult) {
-        setDashboardSummary(summaryResult);
-      }
-
-      if (historyError) {
-          console.error("Error fetching portfolio history:", historyError);
-      } else if (historyResult) {
-        setPortfolioHistoryData(historyResult.map(item => ({
+      if (error) {
+        console.error("Error fetching portfolio history:", error);
+      } else if (data) {
+        setPortfolioHistoryData(data.map(item => ({
           date: item.snapshot_date,
-          total_value: Number(item.total_value),
+          capital_growth: Number(item.net_deposits) + Number(item.cumulative_pl),
           net_deposits: Number(item.net_deposits)
         })));
       }
-      
-      setIsDashboardDataLoading(false);
+      setIsHistoryLoading(false);
     };
-    
-    fetchAsyncData();
+    fetchHistory();
   }, []);
 
-  const { assetAllocationData, topHoldings, upcomingEvents } = useMemo(() => {
-    if (isStoresLoading || !priceHistory.size) {
+  const dashboardMetrics = useMemo(() => {
+    if (isLoading || !priceHistory.size) {
       return {
+        dashboardSummary: { totalPortfolioValue: 0, totalUnrealizedPL: 0, todaysPL: 0, totalReturnPercent: 0 },
         assetAllocationData: [],
         topHoldings: [],
         upcomingEvents: [],
+        finalPortfolioHistoryData: portfolioHistoryData
       };
     }
 
     const pricesForCalc = Array.from(priceHistory.values());
-    const { openPositions: portfolioOpen } = processPortfolio(portfolioActions, pricesForCalc);
-    const { openPositions: fundOpen } = processFundPositions(fundTrades, pricesForCalc);
-    const { openPositions: optionOpen } = processOptionsPositions(optionTrades, priceHistory);
 
-    const portfolioValue = portfolioOpen.reduce((sum, p) => sum + p.currentValue, 0);
+    const { openPositions: portfolioOpen, closedPositions: portfolioClosed } = processPortfolio(portfolioActions, pricesForCalc);
+    const { openPositions: fundOpen, closedPositions: fundClosed } = processFundPositions(fundTrades, pricesForCalc);
+    const { openPositions: optionOpen, historyPositions: optionClosed } = processOptionsPositions(optionTrades, priceHistory);
+    const coveredCallAll = coveredCallTrades.map(p => {
+        const currentStockPrice = priceHistory.get(p.underlying_symbol)?.price / 10 || 0;
+        return calculatePositionMetrics(p, currentStockPrice);
+    });
+    const coveredCallClosed = coveredCallAll.filter(p => p.status !== 'OPEN');
+
+    const stockValue = portfolioOpen.reduce((sum, p) => sum + p.currentValue, 0);
     const fundValue = fundOpen.reduce((sum, p) => sum + p.currentValue, 0);
     const optionValue = optionOpen.reduce((sum, p) => sum + (p.current_value || 0), 0);
-    const total = portfolioValue + fundValue + optionValue;
+    const totalPortfolioValue = stockValue + fundValue + optionValue;
 
-    const assetAllocationData = total === 0 ? [] : [
-      { name: 'سهام', value: portfolioValue },
+    const totalUnrealizedPL = portfolioOpen.reduce((sum, p) => sum + p.unrealizedPL, 0) +
+                              fundOpen.reduce((sum, p) => sum + p.unrealizedPL, 0) +
+                              optionOpen.reduce((sum, p) => sum + (p.unrealized_pl || 0), 0);
+
+    const totalRealizedPL = [...portfolioOpen, ...portfolioClosed].reduce((sum, p) => sum + p.totalRealizedPL + p.totalDividend + p.totalRightsSellRevenue, 0) +
+                            [...fundOpen, ...fundClosed].reduce((sum, p) => sum + p.totalRealizedPL, 0) +
+                            [...optionOpen, ...optionClosed].reduce((sum, p) => sum + p.realized_pl, 0) +
+                            coveredCallClosed.reduce((sum, p) => sum + p.realized_pl, 0);
+    
+    const netDeposits = transactions.reduce((acc, t) => acc + (t.type === "deposit" ? Number(t.amount) : -Number(t.amount)), 0);
+
+    const totalPL = totalUnrealizedPL + totalRealizedPL;
+    
+    const currentCapitalGrowth = netDeposits + totalPL;
+
+    const today = new Date().toISOString().split('T')[0];
+    const todayDataPoint = {
+      date: today,
+      capital_growth: currentCapitalGrowth,
+      net_deposits: netDeposits
+    };
+
+    let combinedHistory = [...portfolioHistoryData];
+    const lastHistoryEntry = combinedHistory.length > 0 ? combinedHistory[combinedHistory.length - 1] : null;
+
+    if (lastHistoryEntry && lastHistoryEntry.date === today) {
+      combinedHistory[combinedHistory.length - 1] = todayDataPoint;
+    } else if (lastHistoryEntry && new Date(lastHistoryEntry.date) > new Date(today)) {
+      let filteredHistory = combinedHistory.filter(p => new Date(p.date) < new Date(today));
+      filteredHistory.push(todayDataPoint);
+      combinedHistory = filteredHistory;
+    }
+    else {
+      combinedHistory.push(todayDataPoint);
+    }
+    
+    const totalReturnPercent = netDeposits !== 0 ? (totalPL / netDeposits) * 100 : 0;
+
+    let todaysPL = 0;
+    const todayDate = new Date();
+    const priceDate = new Date(lastFetchTimestamp);
+    if (priceDate.toDateString() !== todayDate.toDateString()) {
+        todaysPL = 0;
+    } else if (portfolioHistoryData.length > 1) {
+        const yesterdayData = portfolioHistoryData[portfolioHistoryData.length - 2];
+        if (yesterdayData) {
+            const yesterdayValue = yesterdayData.net_deposits + yesterdayData.cumulative_pl;
+            const netDepositsToday = netDeposits - yesterdayData.net_deposits;
+            todaysPL = totalPortfolioValue - yesterdayValue - netDepositsToday;
+        } else {
+            todaysPL = totalPortfolioValue - netDeposits;
+        }
+    } else if (transactions.length > 0) {
+        todaysPL = totalPortfolioValue - netDeposits;
+    }
+
+    const summary = { totalPortfolioValue, totalUnrealizedPL, todaysPL, totalReturnPercent };
+
+    const totalAssetValue = stockValue + fundValue + optionValue;
+    const allocationData = totalAssetValue === 0 ? [] : [
+      { name: 'سهام', value: stockValue },
       { name: 'صندوق', value: fundValue },
       { name: 'اختیار', value: optionValue },
-    ].filter(item => item.value > 0).map(item => ({...item, percent: (item.value / total) * 100}));
+    ].filter(item => item.value > 0).map(item => ({...item, percent: (item.value / totalAssetValue) * 100}));
 
-    const allHoldings = [...portfolioOpen, ...fundOpen];
-    const topHoldings = allHoldings.sort((a, b) => b.currentValue - a.currentValue).slice(0, 5);
-
+    const allHoldings = [...portfolioOpen, ...fundOpen].sort((a, b) => b.currentValue - a.currentValue).slice(0, 5);
+    
     const MS_IN_DAY = 1000 * 60 * 60 * 24;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayForEvents = new Date();
+    todayForEvents.setHours(0, 0, 0, 0);
 
-    const upcomingOptions = optionOpen
-      .map(p => ({ ...p, days_to_expiration: Math.ceil((new Date(p.expiration_date) - today) / MS_IN_DAY) }))
+    const upcomingOpts = optionOpen
+      .map(p => ({ ...p, days_to_expiration: Math.ceil((new Date(p.expiration_date) - todayForEvents) / MS_IN_DAY) }))
       .filter(p => p.days_to_expiration >= 0 && p.days_to_expiration <= 14)
       .map(p => ({ type: 'Option', symbol: p.option_symbol, date: p.expiration_date, days_left: p.days_to_expiration }));
 
-    const upcomingCC = coveredCallTrades
+    const upcomingCCs = coveredCallTrades
       .filter(p => p.status === 'OPEN')
-      .map(p => ({ ...p, days_to_expiration: Math.ceil((new Date(p.expiration_date) - today) / MS_IN_DAY) }))
+      .map(p => ({ ...p, days_to_expiration: Math.ceil((new Date(p.expiration_date) - todayForEvents) / MS_IN_DAY) }))
       .filter(p => p.days_to_expiration >= 0 && p.days_to_expiration <= 14)
       .map(p => ({ type: 'Covered Call', symbol: p.option_symbol, date: p.expiration_date, days_left: p.days_to_expiration }));
 
-    const upcomingEvents = [...upcomingOptions, ...upcomingCC].sort((a, b) => a.days_left - b.days_left);
+    const events = [...upcomingOpts, ...upcomingCCs].sort((a, b) => a.days_left - b.left);
 
-    return { assetAllocationData, topHoldings, upcomingEvents };
-  }, [isStoresLoading, priceHistory, portfolioActions, fundTrades, optionTrades, coveredCallTrades]);
+    return { 
+        dashboardSummary: summary, 
+        assetAllocationData: allocationData, 
+        topHoldings: allHoldings, 
+        upcomingEvents: events,
+        finalPortfolioHistoryData: combinedHistory
+    };
+
+  }, [isLoading, priceHistory, portfolioActions, fundTrades, optionTrades, coveredCallTrades, transactions, portfolioHistoryData, lastFetchTimestamp]);
 
   return {
-    isLoading: isStoresLoading || isDashboardDataLoading,
-    dashboardSummary,
-    assetAllocationData: assetAllocationData,
-    topHoldings: topHoldings,
-    portfolioHistoryData,
-    upcomingEvents: upcomingEvents,
+    isLoading,
+    dashboardSummary: dashboardMetrics.dashboardSummary,
+    assetAllocationData: dashboardMetrics.assetAllocationData,
+    topHoldings: dashboardMetrics.topHoldings,
+    upcomingEvents: dashboardMetrics.upcomingEvents,
+    portfolioHistoryData: dashboardMetrics.finalPortfolioHistoryData
   };
 };
